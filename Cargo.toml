@@ -1,0 +1,9 @@
+[package]
+name = "rash"
+version = "0.1.0"
+authors = ["Brandon Bremen <bbremen@gmail.com>"]
+
+[dependencies]
+nom = "4.1.1"
+log = "*"
+pretty_env_logger = "*"
