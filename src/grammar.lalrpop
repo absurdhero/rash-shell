@@ -1,0 +1,149 @@
+use ast::{Program, CompleteCommands, CompleteCommand, CommandList, AndOrCommand, AndOrOp, Pipeline, Command, Arg, TermOp};
+
+grammar;
+
+pub program: Program<'input> = {
+    linebreak <complete_commands> linebreak => Program { commands: <> },
+    linebreak => Program { commands: CompleteCommands::Nil },
+}
+
+complete_commands: CompleteCommands<'input> = {
+    <rest:complete_commands> newline_list <c:complete_command> => CompleteCommands::Command(c, Box::new(rest)),
+                                          <c:complete_command> => CompleteCommands::Command(c, Box::new(CompleteCommands::Nil)),
+}
+
+complete_command: CompleteCommand<'input> = {
+    <l:list> <s:separator_op> => CompleteCommand::List(s, l),
+    list                      => CompleteCommand::List(TermOp::Semi, <>),
+}
+
+list: CommandList<'input> = {
+    // TODO: record separator_op
+    <l:list> separator_op <a:and_or> => CommandList::AndOr(a, Box::new(l)),
+                          <a:and_or> => CommandList::AndOr(a, Box::new(CommandList::Nil)),
+}
+
+and_or: AndOrCommand<'input> = {
+    pipeline => AndOrCommand::Pipelines(AndOrOp::And, <>, Box::new(AndOrCommand::Nil)),
+    <rest:and_or> AND_IF linebreak <p:pipeline> => AndOrCommand::Pipelines(AndOrOp::And, p, Box::new(rest)),
+    <rest:and_or> OR_IF  linebreak <p:pipeline> => AndOrCommand::Pipelines(AndOrOp::Or,  p, Box::new(rest)),
+}
+
+
+pipeline: Pipeline<'input> = {
+    pipe_sequence,
+    Bang <pipe_sequence> => Pipeline::Not(Box::new(<>)),
+}
+
+pipe_sequence: Pipeline<'input> = {
+    command => Pipeline::CommandList(<>, Box::new(Pipeline::Nil)),
+    // XXX: this conses in reverse order
+    <p:pipe_sequence> "|" linebreak <c:command> => Pipeline::CommandList(c, Box::new(p)),
+}
+
+// only implement simple_command for now
+command: Command<'input> = {
+    simple_command,
+}
+
+simple_command: Command<'input> = {
+    <assign:cmd_prefix> <cmd:cmd_word> <args:cmd_suffix> => Command::Simple{ assign, args: Arg::Arg(cmd, Box::new(args)) },
+    <assign:cmd_prefix> <cmd:cmd_word>                   => Command::Simple{ assign, args: Arg::Arg(cmd, Box::new(Arg::Nil)) },
+    cmd_prefix                                           => Command::Simple{ assign: <>, args: Arg::Nil },
+    <cmd:cmd_name> <args:cmd_suffix>                     => Command::Simple{ assign: Arg::Nil, args: Arg::Arg(cmd, Box::new(args)) },
+    cmd_name                                             => Command::Simple{ assign: Arg::Nil, args: Arg::Arg(<>, Box::new(Arg::Nil)) },
+};
+
+cmd_name = { WORD }
+cmd_word = { WORD }
+
+cmd_prefix: Arg<'input> = {
+    ASSIGNMENT_WORD => Arg::Arg(<>, Box::new(Arg::Nil)),
+    // XXX: constructed backwards
+    <rest:cmd_prefix> <w:ASSIGNMENT_WORD> => Arg::Arg(w, Box::new(rest)),
+}
+
+cmd_suffix: Arg<'input> = {
+    WORD => Arg::Arg(<>, Box::new(Arg::Nil)),
+    // XXX: constructed backwards
+    <rest:cmd_suffix> <w:WORD> => Arg::Arg(w, Box::new(rest)),
+}
+
+
+// skipping down to the linebreak and separator section...
+
+newline_list: () = {
+    NEWLINE,
+    newline_list NEWLINE,
+}
+
+linebreak = {
+    newline_list?
+}
+
+separator_op: TermOp = {
+    "&" => TermOp::Amp,
+    ";" => TermOp::Semi,
+}
+
+separator: TermOp = {
+    <separator_op> linebreak,
+    newline_list => TermOp::Semi,
+}
+
+sequential_sep: () = {
+    ";" linebreak,
+    newline_list,
+}
+
+match {
+    "&&" => AND_IF,
+    "||" => OR_IF,
+    ";;" => DSEMI,
+    "<<" => DLESS,
+    ">>" => DGREAT,
+    "<&" => LESSAND,
+    ">&" => GREATAND,
+    "<>" => LESSGREAT,
+    "<<-" => DLESSDASH,
+    ">|" => CLOBBER,
+
+
+// The following are the reserved words.
+
+    "if" => If,
+    "then" => Then,
+    "else" => Else,
+    "elif" => Elif,
+    "fi" => Fi,
+    "do" => Do,
+    "done" => Done,
+
+    "case" => Case,
+    "esac" => Esac,
+    "while" => While,
+    "until" => Until,
+    "for" => For,
+
+
+// These are reserved words, not operator tokens, and are
+// recognized when reserved words are recognized.
+
+    "{" => Lbrace,
+    "}" => Rbrace,
+    "!" => Bang,
+    "in" => In,
+
+    "|",
+    "&",
+    ";",
+
+    r"\w+=\w*" => ASSIGNMENT_WORD,
+    r"\w+" => WORD,
+
+    r"(\n|(\r\n))" => NEWLINE,
+
+//%token  NAME
+//%token  IO_NUMBER
+
+}

@@ -2,45 +2,53 @@
 extern crate pretty_env_logger;
 
 #[macro_use] extern crate log;
-#[macro_use] extern crate nom;
+#[macro_use] extern crate lalrpop_util;
 
 use std::io;
-use std::io::Read;
 use std::io::Write;
 
-pub mod parser;
+pub mod ast;
+pub mod eval;
+
+lalrpop_mod!(pub grammar);
 
 fn main() {
     pretty_env_logger::init();
 
+    let parser = grammar::programParser::new();
 
-    let mut input = String::new();
+    print!("$ ");
+
+    let mut input: String = String::with_capacity(1024);
+
     loop {
-        print!("$ ");
         std::io::stdout().flush().expect("could not flush");
 
-        let mut buffer: [u8; 1024] = [0; 1024];
-        let len;
-        match io::stdin().read(&mut buffer) {
+        match io::stdin().read_line(&mut input) {
             Ok(n) => {
-                len = n;
-                debug!("{} bytes read", len);
+                if n == 0 {
+                    break;
+                }
             }
             Err(_error) => std::process::exit(1),
         }
 
+        //debug!("read: {:X?}", input);
 
-        let result = parser::parse(&buffer[..len]);
-
-        match result {
-            Ok((_in, command)) => eval(&command),
-            Err(line) => println!("error: line {}", line),
+        match parser.parse(&input) {
+            Ok(mut program) => {
+                eval::eval(&mut program);
+            },
+            Err(e) => {
+                if let lalrpop_util::ParseError::UnrecognizedToken { token: Option::None, expected: _ } = e {
+                        continue;
+                } else {
+                    println!("rash: {}", e)
+                }
+            },
         }
 
         input.clear();
+        print!("$ ");
     }
-}
-
-fn eval(command: &parser::Command) -> () {
-    debug!("command: \"{:?}\"", command);
 }
