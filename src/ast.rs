@@ -5,26 +5,26 @@ pub struct Program<'a> {
 
 #[derive(Debug, PartialEq)]
 pub enum CompleteCommands<'a> {
-    Command(CompleteCommand<'a>, Box<CompleteCommands<'a>>),
+    CompleteCommands(CompleteCommand<'a>, Box<CompleteCommands<'a>>),
     Nil
 }
 
 #[derive(Debug, PartialEq)]
 pub enum CompleteCommand<'a> {
-    List(TermOp, CommandList<'a>),
+    CompleteCommand(TermOp, List<'a>),
     Nil
 }
 
 #[derive(Debug, PartialEq)]
-pub enum CommandList<'a> {
-    AndOr(AndOrCommand<'a>, Box<CommandList<'a>>),
-    Nil
+pub enum List<'a> {
+    List(TermOp, AndOr<'a>, Box<List<'a>>),
+    Nil,
 }
 
 #[derive(Debug, PartialEq)]
-pub enum AndOrCommand<'a> {
-    Pipelines(AndOrOp, Pipeline<'a>, Box<AndOrCommand<'a>>),
-    Nil
+pub enum AndOr<'a> {
+    AndOr(AndOrOp, Pipeline<'a>, Box<AndOr<'a>>),
+    Nil,
 }
 
 #[derive(Debug, PartialEq)]
@@ -35,7 +35,7 @@ pub enum AndOrOp {
 
 #[derive(Debug, PartialEq)]
 pub enum Pipeline<'a> {
-    CommandList(Command<'a>, Box<Pipeline<'a>>),
+    Pipeline(Command<'a>, Box<Pipeline<'a>>),
     Not(Box<Pipeline<'a>>),
     Nil,
 }
@@ -51,6 +51,7 @@ pub enum Command<'a> {
 
 #[derive(Debug, PartialEq)]
 pub enum Arg<'a> {
+    CmdWord(&'a str, Box<Arg<'a>>),
     Arg(&'a str, Box<Arg<'a>>),
     Backquote(Box<Arg<'a>>),
     Nil,

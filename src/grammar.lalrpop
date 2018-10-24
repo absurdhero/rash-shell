@@ -1,4 +1,4 @@
-use ast::{Program, CompleteCommands, CompleteCommand, CommandList, AndOrCommand, AndOrOp, Pipeline, Command, Arg, TermOp};
+use ast::{Program, CompleteCommands, CompleteCommand, List, AndOr, AndOrOp, Pipeline, Command, Arg, TermOp};
 
 grammar;
 
@@ -8,25 +8,24 @@ pub program: Program<'input> = {
 }
 
 complete_commands: CompleteCommands<'input> = {
-    <rest:complete_commands> newline_list <c:complete_command> => CompleteCommands::Command(c, Box::new(rest)),
-                                          <c:complete_command> => CompleteCommands::Command(c, Box::new(CompleteCommands::Nil)),
+    <rest:complete_commands> newline_list <c:complete_command> => CompleteCommands::CompleteCommands(c, Box::new(rest)),
+                                          <c:complete_command> => CompleteCommands::CompleteCommands(c, Box::new(CompleteCommands::Nil)),
 }
 
 complete_command: CompleteCommand<'input> = {
-    <l:list> <s:separator_op> => CompleteCommand::List(s, l),
-    list                      => CompleteCommand::List(TermOp::Semi, <>),
+    <l:list> <s:separator_op> => CompleteCommand::CompleteCommand(s, l),
+    list                      => CompleteCommand::CompleteCommand(TermOp::Semi, <>),
 }
 
-list: CommandList<'input> = {
-    // TODO: record separator_op
-    <l:list> separator_op <a:and_or> => CommandList::AndOr(a, Box::new(l)),
-                          <a:and_or> => CommandList::AndOr(a, Box::new(CommandList::Nil)),
+list: List<'input> = {
+    <l:list> <s:separator_op> <a:and_or> => List::List(s, a, Box::new(l)),
+                              <a:and_or> => List::List(TermOp::Semi, a, Box::new(List::Nil)),
 }
 
-and_or: AndOrCommand<'input> = {
-    pipeline => AndOrCommand::Pipelines(AndOrOp::And, <>, Box::new(AndOrCommand::Nil)),
-    <rest:and_or> AND_IF linebreak <p:pipeline> => AndOrCommand::Pipelines(AndOrOp::And, p, Box::new(rest)),
-    <rest:and_or> OR_IF  linebreak <p:pipeline> => AndOrCommand::Pipelines(AndOrOp::Or,  p, Box::new(rest)),
+and_or: AndOr<'input> = {
+    pipeline                                    => AndOr::AndOr(AndOrOp::And, <>, Box::new(AndOr::Nil)),
+    <rest:and_or> AND_IF linebreak <p:pipeline> => AndOr::AndOr(AndOrOp::And, p, Box::new(rest)),
+    <rest:and_or> OR_IF  linebreak <p:pipeline> => AndOr::AndOr(AndOrOp::Or,  p, Box::new(rest)),
 }
 
 
@@ -36,9 +35,8 @@ pipeline: Pipeline<'input> = {
 }
 
 pipe_sequence: Pipeline<'input> = {
-    command => Pipeline::CommandList(<>, Box::new(Pipeline::Nil)),
-    // XXX: this conses in reverse order
-    <p:pipe_sequence> "|" linebreak <c:command> => Pipeline::CommandList(c, Box::new(p)),
+    command => Pipeline::Pipeline(<>, Box::new(Pipeline::Nil)),
+    <p:pipe_sequence> "|" linebreak <c:command> => Pipeline::Pipeline(c, Box::new(p)),
 }
 
 // only implement simple_command for now
@@ -47,11 +45,11 @@ command: Command<'input> = {
 }
 
 simple_command: Command<'input> = {
-    <assign:cmd_prefix> <cmd:cmd_word> <args:cmd_suffix> => Command::Simple{ assign, args: Arg::Arg(cmd, Box::new(args)) },
-    <assign:cmd_prefix> <cmd:cmd_word>                   => Command::Simple{ assign, args: Arg::Arg(cmd, Box::new(Arg::Nil)) },
+    <assign:cmd_prefix> <cmd:cmd_word> <args:cmd_suffix> => Command::Simple{ assign, args: Arg::CmdWord(cmd, Box::new(args)) },
+    <assign:cmd_prefix> <cmd:cmd_word>                   => Command::Simple{ assign, args: Arg::CmdWord(cmd, Box::new(Arg::Nil)) },
     cmd_prefix                                           => Command::Simple{ assign: <>, args: Arg::Nil },
-    <cmd:cmd_name> <args:cmd_suffix>                     => Command::Simple{ assign: Arg::Nil, args: Arg::Arg(cmd, Box::new(args)) },
-    cmd_name                                             => Command::Simple{ assign: Arg::Nil, args: Arg::Arg(<>, Box::new(Arg::Nil)) },
+    <cmd:cmd_name> <args:cmd_suffix>                     => Command::Simple{ assign: Arg::Nil, args: Arg::CmdWord(cmd, Box::new(args)) },
+    cmd_name                                             => Command::Simple{ assign: Arg::Nil, args: Arg::CmdWord(<>, Box::new(Arg::Nil)) },
 };
 
 cmd_name = { WORD }
@@ -59,13 +57,11 @@ cmd_word = { WORD }
 
 cmd_prefix: Arg<'input> = {
     ASSIGNMENT_WORD => Arg::Arg(<>, Box::new(Arg::Nil)),
-    // XXX: constructed backwards
     <rest:cmd_prefix> <w:ASSIGNMENT_WORD> => Arg::Arg(w, Box::new(rest)),
 }
 
 cmd_suffix: Arg<'input> = {
     WORD => Arg::Arg(<>, Box::new(Arg::Nil)),
-    // XXX: constructed backwards
     <rest:cmd_suffix> <w:WORD> => Arg::Arg(w, Box::new(rest)),
 }
 
