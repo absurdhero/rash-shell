@@ -1,4 +1,4 @@
-use ast::{Program, CompleteCommands, CompleteCommand, List, AndOr, AndOrOp, Pipeline, Command, Arg, TermOp};
+use ast::{Program, CompleteCommands, CompleteCommand, AndOr, AndOrOp, Pipeline, Command, Arg, TermOp};
 
 grammar;
 
@@ -13,13 +13,13 @@ complete_commands: CompleteCommands<'input> = {
 }
 
 complete_command: CompleteCommand<'input> = {
-    <l:list> <s:separator_op> => CompleteCommand::CompleteCommand(s, l),
-    list                      => CompleteCommand::CompleteCommand(TermOp::Semi, <>),
+    <l:list> <s:separator_op> => { let mut cc = l; cc.update_last(s); cc },
+    list,
 }
 
-list: List<'input> = {
+list: CompleteCommand<'input> = {
     <l:list> <s:separator_op> <a:and_or> => l.push(s, a),
-                              <a:and_or> => List{ and_ors: vec![(TermOp::Semi, <>)] },
+                              <a:and_or> => CompleteCommand{ and_ors: vec![(TermOp::Semi, <>)] },
 }
 
 and_or: AndOr<'input> = {

@@ -16,25 +16,23 @@ impl<'a> CompleteCommands<'a> {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum CompleteCommand<'a> {
-    CompleteCommand(TermOp, List<'a>),
-    Nil
-}
-
-#[derive(Debug, PartialEq)]
-pub struct List<'a> {
+pub struct CompleteCommand<'a> {
     pub and_ors: Vec<(TermOp, AndOr<'a>)>,
 }
 
-impl<'a> List<'a> {
-    pub fn push(mut self: List<'a>, op: TermOp, element: AndOr<'a>) -> List<'a> {
+impl<'a> CompleteCommand<'a> {
+    pub fn push(mut self, op: TermOp, element: AndOr<'a>) -> CompleteCommand<'a> {
         // update the TermOp of the previous list entry
-        if let Some((_, e)) = self.and_ors.pop() {
-            self.and_ors.push((op, e));
-        }
+        self.update_last(op);
         // add the new entry and assume it ends with a semicolon
         self.and_ors.push((TermOp::Semi, element));
         self
+    }
+
+    pub fn update_last(&mut self, op: TermOp) {
+        if let Some((_, e)) = self.and_ors.pop() {
+            self.and_ors.push((op, e));
+        }
     }
 }
 
@@ -44,7 +42,7 @@ pub struct AndOr<'a> {
 }
 
 impl<'a> AndOr<'a> {
-    pub fn push(mut self: AndOr<'a>, op: AndOrOp, element: Pipeline<'a>) -> AndOr<'a> {
+    pub fn push(mut self, op: AndOrOp, element: Pipeline<'a>) -> AndOr<'a> {
         if let Some((_, e)) = self.pipelines.pop() {
             self.pipelines.push((op, e));
         }
@@ -61,8 +59,8 @@ pub enum AndOrOp {
 
 #[derive(Debug, PartialEq)]
 pub struct Pipeline<'a> {
-    commands: Vec<Command<'a>>,
-    negated: bool,
+    pub commands: Vec<Command<'a>>,
+    pub negated: bool,
 }
 
 impl<'a> Pipeline<'a> {
@@ -75,7 +73,7 @@ impl<'a> Pipeline<'a> {
         self
     }
 
-    pub fn push(mut self: Pipeline<'a>, cmd: Command<'a>) -> Pipeline<'a> {
+    pub fn push(mut self, cmd: Command<'a>) -> Pipeline<'a> {
         self.commands.push(cmd);
         self
     }
