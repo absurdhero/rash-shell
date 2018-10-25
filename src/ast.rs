@@ -34,27 +34,41 @@ pub enum AndOrOp {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum Pipeline<'a> {
-    Pipeline(Command<'a>, Box<Pipeline<'a>>),
-    Not(Box<Pipeline<'a>>),
-    Nil,
+pub struct Pipeline<'a> {
+    commands: Vec<Command<'a>>,
+    negated: bool,
+}
+
+impl<'a> Pipeline<'a> {
+    pub fn new(cmd: Command<'a>) -> Pipeline<'a> {
+        Pipeline { commands: vec![cmd], negated: false }
+    }
+
+    pub fn negate(mut self) -> Pipeline<'a> {
+        self.negated = !self.negated;
+        self
+    }
+
+    pub fn push(mut self: Pipeline<'a>, cmd: Command<'a>) -> Pipeline<'a> {
+        self.commands.push(cmd);
+        self
+    }
 }
 
 #[derive(Debug, PartialEq)]
 pub enum Command<'a> {
     Simple {
-        assign: Arg<'a>,
-        args: Arg<'a>,
+        assign: Vec<Arg<'a>>,
+        cmd: Arg<'a>,
+        args: Vec<Arg<'a>>,
         //redirect: Vec<Redirect<'a>>,
     },
 }
 
 #[derive(Debug, PartialEq)]
 pub enum Arg<'a> {
-    CmdWord(&'a str, Box<Arg<'a>>),
-    Arg(&'a str, Box<Arg<'a>>),
-    Backquote(Box<Arg<'a>>),
-    Nil,
+    Arg(&'a str),
+    Backquote(Vec<Arg<'a>>),
 }
 
 #[derive(Debug, PartialEq)]

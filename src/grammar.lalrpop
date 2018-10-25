@@ -28,15 +28,14 @@ and_or: AndOr<'input> = {
     <rest:and_or> OR_IF  linebreak <p:pipeline> => AndOr::AndOr(AndOrOp::Or,  p, Box::new(rest)),
 }
 
-
 pipeline: Pipeline<'input> = {
     pipe_sequence,
-    Bang <pipe_sequence> => Pipeline::Not(Box::new(<>)),
+    Bang <pipe_sequence> => <>.negate()
 }
 
 pipe_sequence: Pipeline<'input> = {
-    command => Pipeline::Pipeline(<>, Box::new(Pipeline::Nil)),
-    <p:pipe_sequence> "|" linebreak <c:command> => Pipeline::Pipeline(c, Box::new(p)),
+    command => Pipeline::new(<>),
+    <p:pipe_sequence> "|" linebreak <c:command> => p.push(c)
 }
 
 // only implement simple_command for now
@@ -45,24 +44,22 @@ command: Command<'input> = {
 }
 
 simple_command: Command<'input> = {
-    <assign:cmd_prefix> <cmd:cmd_word> <args:cmd_suffix> => Command::Simple{ assign, args: Arg::CmdWord(cmd, Box::new(args)) },
-    <assign:cmd_prefix> <cmd:cmd_word>                   => Command::Simple{ assign, args: Arg::CmdWord(cmd, Box::new(Arg::Nil)) },
-    cmd_prefix                                           => Command::Simple{ assign: <>, args: Arg::Nil },
-    <cmd:cmd_name> <args:cmd_suffix>                     => Command::Simple{ assign: Arg::Nil, args: Arg::CmdWord(cmd, Box::new(args)) },
-    cmd_name                                             => Command::Simple{ assign: Arg::Nil, args: Arg::CmdWord(<>, Box::new(Arg::Nil)) },
+    <assign:cmd_prefix> <cmd:cmd_word> <args:cmd_suffix> => Command::Simple{ assign, cmd: Arg::Arg(cmd), args },
+    <assign:cmd_prefix> <cmd:cmd_word>                   => Command::Simple{ assign, cmd: Arg::Arg(cmd), args: vec![] },
+    <assign:cmd_prefix>                                  => Command::Simple{ assign, cmd: Arg::Arg(""), args: vec![] },
+    <cmd:cmd_name> <args:cmd_suffix>                     => Command::Simple{ assign: vec![], cmd: Arg::Arg(cmd), args },
+    cmd_name                                             => Command::Simple{ assign: vec![], cmd: Arg::Arg(<>), args: vec![] },
 };
 
 cmd_name = { WORD }
 cmd_word = { WORD }
 
-cmd_prefix: Arg<'input> = {
-    ASSIGNMENT_WORD => Arg::Arg(<>, Box::new(Arg::Nil)),
-    <rest:cmd_prefix> <w:ASSIGNMENT_WORD> => Arg::Arg(w, Box::new(rest)),
+cmd_prefix: Vec<Arg<'input>> = {
+    ASSIGNMENT_WORD+ => <>.into_iter().map(|w| { Arg::Arg(w) }).collect(),
 }
 
-cmd_suffix: Arg<'input> = {
-    WORD => Arg::Arg(<>, Box::new(Arg::Nil)),
-    <rest:cmd_suffix> <w:WORD> => Arg::Arg(w, Box::new(rest)),
+cmd_suffix: Vec<Arg<'input>> = {
+    WORD+ => <>.into_iter().map(|w| { Arg::Arg(w) }).collect(),
 }
 
 
