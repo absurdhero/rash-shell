@@ -4,9 +4,15 @@ pub struct Program<'a> {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum CompleteCommands<'a> {
-    CompleteCommands(CompleteCommand<'a>, Box<CompleteCommands<'a>>),
-    Nil
+pub struct CompleteCommands<'a> {
+    pub complete_commands: Vec<CompleteCommand<'a>>,
+}
+
+impl<'a> CompleteCommands<'a> {
+    pub fn push(mut self: CompleteCommands<'a>, element: CompleteCommand<'a>) -> CompleteCommands<'a> {
+        self.complete_commands.push(element);
+        self
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -16,15 +22,35 @@ pub enum CompleteCommand<'a> {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum List<'a> {
-    List(TermOp, AndOr<'a>, Box<List<'a>>),
-    Nil,
+pub struct List<'a> {
+    pub and_ors: Vec<(TermOp, AndOr<'a>)>,
+}
+
+impl<'a> List<'a> {
+    pub fn push(mut self: List<'a>, op: TermOp, element: AndOr<'a>) -> List<'a> {
+        // update the TermOp of the previous list entry
+        if let Some((_, e)) = self.and_ors.pop() {
+            self.and_ors.push((op, e));
+        }
+        // add the new entry and assume it ends with a semicolon
+        self.and_ors.push((TermOp::Semi, element));
+        self
+    }
 }
 
 #[derive(Debug, PartialEq)]
-pub enum AndOr<'a> {
-    AndOr(AndOrOp, Pipeline<'a>, Box<AndOr<'a>>),
-    Nil,
+pub struct AndOr<'a> {
+    pub pipelines: Vec<(AndOrOp, Pipeline<'a>)>,
+}
+
+impl<'a> AndOr<'a> {
+    pub fn push(mut self: AndOr<'a>, op: AndOrOp, element: Pipeline<'a>) -> AndOr<'a> {
+        if let Some((_, e)) = self.pipelines.pop() {
+            self.pipelines.push((op, e));
+        }
+        self.pipelines.push((AndOrOp::And, element));
+        self
+    }
 }
 
 #[derive(Debug, PartialEq)]

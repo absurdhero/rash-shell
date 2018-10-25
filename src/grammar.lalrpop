@@ -4,12 +4,12 @@ grammar;
 
 pub program: Program<'input> = {
     linebreak <complete_commands> linebreak => Program { commands: <> },
-    linebreak => Program { commands: CompleteCommands::Nil },
+    linebreak => Program { commands: CompleteCommands { complete_commands: vec![] } },
 }
 
 complete_commands: CompleteCommands<'input> = {
-    <rest:complete_commands> newline_list <c:complete_command> => CompleteCommands::CompleteCommands(c, Box::new(rest)),
-                                          <c:complete_command> => CompleteCommands::CompleteCommands(c, Box::new(CompleteCommands::Nil)),
+    <rest:complete_commands> newline_list <c:complete_command> => rest.push(c),
+                                          <c:complete_command> => CompleteCommands { complete_commands: vec![c] },
 }
 
 complete_command: CompleteCommand<'input> = {
@@ -18,14 +18,14 @@ complete_command: CompleteCommand<'input> = {
 }
 
 list: List<'input> = {
-    <l:list> <s:separator_op> <a:and_or> => List::List(s, a, Box::new(l)),
-                              <a:and_or> => List::List(TermOp::Semi, a, Box::new(List::Nil)),
+    <l:list> <s:separator_op> <a:and_or> => l.push(s, a),
+                              <a:and_or> => List{ and_ors: vec![(TermOp::Semi, <>)] },
 }
 
 and_or: AndOr<'input> = {
-    pipeline                                    => AndOr::AndOr(AndOrOp::And, <>, Box::new(AndOr::Nil)),
-    <rest:and_or> AND_IF linebreak <p:pipeline> => AndOr::AndOr(AndOrOp::And, p, Box::new(rest)),
-    <rest:and_or> OR_IF  linebreak <p:pipeline> => AndOr::AndOr(AndOrOp::Or,  p, Box::new(rest)),
+    pipeline                                    => AndOr{ pipelines: vec![(AndOrOp::And, <>)] },
+    <rest:and_or> AND_IF linebreak <p:pipeline> => rest.push(AndOrOp::And, p),
+    <rest:and_or> OR_IF  linebreak <p:pipeline> => rest.push(AndOrOp::Or, p),
 }
 
 pipeline: Pipeline<'input> = {
