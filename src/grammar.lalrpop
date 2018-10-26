@@ -131,12 +131,11 @@ match {
     "&",
     ";",
 
-    r"\w+=\w*" => ASSIGNMENT_WORD,
-    r"\w+" => WORD,
-
+    r"[a-zA-Z_][a-zA-Z0-9_]*=\S+" => ASSIGNMENT_WORD,
+} else {
+    r"[^\s]+" => WORD,
     r"(\n|(\r\n))" => NEWLINE,
 
 //%token  NAME
 //%token  IO_NUMBER
-
 }
