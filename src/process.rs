@@ -9,17 +9,16 @@ pub struct ChildCommand {
 }
 
 pub enum ProcessType {
-    Process(Child),
+    Process(Command),
     Builtin,
 }
 
-pub fn exec(env: &HashMap<String, String>, cmd: &str, args: &Vec<&str>) -> std::io::Result<ChildCommand> {
-    let res = Command::new(cmd)
+pub fn exec(env: &HashMap<String, String>, cmd: &str, args: &Vec<&str>, stdin: i32, stdout: i32) -> std::io::Result<ChildCommand> {
+    let command = Command::new(cmd)
         .envs(env)
         .args(args)
-        .stdin(Stdio::piped())
-        .spawn();
-    return res.map(|c| {
+        .stdin(Stdio::piped());
+    return command.map(|c| {
         ChildCommand {
             cmd: String::from(cmd),
             process: ProcessType::Process(c),
