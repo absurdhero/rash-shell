@@ -54,8 +54,8 @@ simple_command: Command<'input> = {
 cmd_name = { WORD }
 cmd_word = { WORD }
 
-cmd_prefix: Vec<Arg<'input>> = {
-    ASSIGNMENT_WORD+ => <>.into_iter().map(|w| { Arg::Arg(w) }).collect(),
+cmd_prefix: Vec<&'input str> = {
+    ASSIGNMENT_WORD+ => <>,
 }
 
 cmd_suffix: Vec<Arg<'input>> = {

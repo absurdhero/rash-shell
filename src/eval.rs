@@ -1,4 +1,7 @@
 use ast;
+use process;
+use std::collections::HashMap;
+use std::iter::FromIterator;
 use std::process::*;
 
 pub fn eval(program: &ast::Program) -> () {
@@ -35,6 +38,7 @@ fn andor_list(async: bool, list: &ast::AndOr) {
 fn exec_pipeline(pipeline: &ast::Pipeline) -> i32 {
     for command in &pipeline.commands {
         debug!("{:?}", command);
+        let mut cmd_list: Vec<process::ChildCommand> = vec![];
         match command {
             ast::Command::Simple { assign, cmd, args } => {
                 let parsed_cmd = match cmd {
@@ -49,24 +53,45 @@ fn exec_pipeline(pipeline: &ast::Pipeline) -> i32 {
                     }
                 }).collect();
 
-                let res = Command::new(parsed_cmd)
-                    .args(parsed_args)
-                    .spawn();
+                let res = exec_simple(assign, parsed_cmd, &parsed_args);
 
                 match res {
                     Ok(mut child) => {
-                        let error_text = format!("could not execute {}", parsed_cmd);
-                        let status = child.wait().expect(&error_text);
-                        match status.code() {
-                            // TODO: actually pipeline, don't just run the first command
-                            Some(code) => return code,
-                            None => println!("Process terminated by signal")
-                        }
+                        cmd_list.push(child);
                     }
-                    Err(e) => println!("{}", e),
+                    Err(e) => {
+                        println!("{}", e);
+                        return -1;
+                    },
                 }
+            }
+        }
+
+        for child in &mut cmd_list {
+            match child.process {
+                process::ProcessType::Process(ref mut process) => {
+                    let error_text = format!("could not wait for {}", child.cmd);
+                    let status = process.wait().expect(&error_text);
+                    match status.code() {
+                        Some(code) => child.returned = Some(code),
+                        None => println!("Process terminated by signal")
+                    }
+                },
+                process::ProcessType::Builtin => {
+                    println!("built-ins not supported");
+                },
             }
         }
     }
     return -1;
+}
+
+pub fn exec_simple(assign: &Vec<&str>, cmd: &str, args: &Vec<&str>) -> std::io::Result<process::ChildCommand> {
+    let env: HashMap<String, String> = HashMap::from_iter(
+        assign.iter().map(|s| {
+            let split: Vec<&str> = s.split('=').collect();
+            (String::from(split[0]), String::from(split[1]))
+        }));
+
+    process::exec(&env, cmd, args)
 }

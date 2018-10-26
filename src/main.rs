@@ -9,6 +9,7 @@ use std::io::Write;
 
 pub mod ast;
 pub mod eval;
+pub mod process;
 
 lalrpop_mod!(pub grammar);
 

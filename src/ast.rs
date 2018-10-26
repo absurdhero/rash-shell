@@ -82,7 +82,7 @@ impl<'a> Pipeline<'a> {
 #[derive(Debug, PartialEq)]
 pub enum Command<'a> {
     Simple {
-        assign: Vec<Arg<'a>>,
+        assign: Vec<&'a str>,
         cmd: Arg<'a>,
         args: Vec<Arg<'a>>,
         //redirect: Vec<Redirect<'a>>,
