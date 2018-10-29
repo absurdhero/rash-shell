@@ -1,10 +1,8 @@
 use ast;
-use process;
-use std::collections::HashMap;
-use std::iter::FromIterator;
-#[cfg(unix)]
-use std::os::unix::io::*;
-use std::process::*;
+use std::os::unix::io::RawFd;
+use nix::unistd::*;
+use nix::sys::wait;
+use std::ffi::CString;
 
 pub fn eval(program: &ast::Program) -> () {
     for cc in &program.commands.complete_commands {
@@ -38,82 +36,87 @@ fn andor_list(async: bool, list: &ast::AndOr) {
 }
 
 fn exec_pipeline(pipeline: &ast::Pipeline) -> i32 {
-    let mut cmd_list: Vec<process::ChildCommand> = vec![];
-    let mut last_stdout = 1;
+    let mut cmd_list: Vec<Pid> = vec![];
+    let mut next_stdin: RawFd = 0;
+    let mut cur_stdout: RawFd = 0;
 
-    for command in &pipeline.commands {
+    for i in 0..pipeline.commands.len() {
+        let command = &pipeline.commands[i];
         debug!("{:?}", command);
         match command {
             ast::Command::Simple { assign, cmd, args } => {
                 let parsed_cmd = match cmd {
-                    ast::Arg::Arg(s) => s,
+                    ast::Arg::Arg(s) => CString::new(*s).unwrap(),
                     // TODO: Evaluate the backquoted args as an andor_list and substitute stdout
-                    ast::Arg::Backquote(_quoted_args) => "",
+                    ast::Arg::Backquote(_quoted_args) => CString::new("").unwrap(),
                 };
-                let parsed_args: Vec<&str> = args.iter().map(|a| {
+                let mut parsed_args: Vec<CString> = vec![parsed_cmd.clone()];
+                parsed_args.extend(args.iter().map(|a| {
                     match a {
-                        ast::Arg::Arg(s) => s,
-                        ast::Arg::Backquote(_quoted_args) => "",
+                        ast::Arg::Arg(s) => CString::new(*s).unwrap(),
+                        ast::Arg::Backquote(_quoted_args) => CString::new("").unwrap(),
                     }
+                }));
+                let parsed_env: Vec<CString> = assign.iter().map(|a| {
+                    CString::new(*a).unwrap()
                 }).collect();
 
-                let res = exec_simple(assign, parsed_cmd, &parsed_args, last_stdout);
+                let cur_stdin: RawFd;
 
-                match res {
-                    Ok(mut child) => {
-                        cmd_list.push(child);
-                        if let process::ProcessType::Process(p) = &child {
-                            if let Some(stdin) = p.stdin {
-                                stdin.as_raw()
-                            }
+                if i == 0 {
+                    cur_stdin = 0;
+                    next_stdin = 0;
+                    if pipeline.commands.len() == 1 {
+                        cur_stdout = 1;
+                    } else {
+                        if let Ok((r, w)) = pipe() {
+                            cur_stdout = w;
+                            next_stdin = r;
                         }
                     }
-                    Err(e) => {
-                        println!("{}", e);
-                        return -1;
-                    },
+                } else if i == pipeline.commands.len() -1 {
+                    cur_stdin = next_stdin;
+                    cur_stdout = 1;
+                } else {
+                    cur_stdin = next_stdin;
+                    if let Ok((r, w)) = pipe() {
+                        cur_stdout = w;
+                        next_stdin = r;
+                    }
+                };
+
+
+                match fork() {
+                    Ok(ForkResult::Parent { child }) => {
+                        cmd_list.push(child);
+                        if cur_stdin != 0 { close(cur_stdin).unwrap(); }
+                        if cur_stdout != 1 { close(cur_stdout).unwrap(); }
+                    }
+                    Ok(ForkResult::Child) => {
+                        dup2( cur_stdin, 0).expect("could not dup stdin");
+                        dup2( cur_stdout, 1).expect("could not dup stdout");
+                        // wire up stdin from last thing in pipeline and exec
+                        if let Err(e) = execve(&parsed_cmd, &parsed_args, &parsed_env) {
+                            println!("could not exec: {}", e);
+                        }
+                    }
+                    Err(_) => println!("Fork failed"),
                 }
             }
         }
     }
-    let mut running = vec![];
 
-    // start each process
-    for child in &mut cmd_list {
-        match child.process {
-            process::ProcessType::Process(ref mut process) => {
-                match process.spawn() {
-                    Ok(mut c) => running.push(c),
-                    Err(e) => {
-                        println!("{}", e);
-                        return -1;
-                    }
-                }
-            },
-            process::ProcessType::Builtin => {
-                println!("built-ins not supported");
-            },
+    for child in cmd_list {
+        let result = wait::waitpid(Some(child), None);
+        match result {
+            Ok(_wait_status) => {
+            }
+            Err(e) => {
+                println!("wait failed: {}", e);
+            }
         }
     }
 
-    // wait for last process to finish
-    let mut last_cmd = running.last().unwrap();
-    let error_text = format!("could not wait for {}", last_cmd.cmd);
-    let return_status = -1;
-    let status = process.wait().expect(&error_text);
-    match status.code() {
-        Some(code) => last_cmd.returned = Some(code),
-        None => println!("Process terminated by signal")
-    }
+
     return -1;
-}
-
-pub fn exec_simple(assign: &Vec<&str>, cmd: &str, args: &Vec<&str>, stdin: i32, stdout: i32) -> std::io::Result<process::ChildCommand> {
-    let env: HashMap<String, String> = HashMap::from_iter(
-        assign.iter().map(|s| {
-            let split: Vec<&str> = s.split('=').collect();
-            (String::from(split[0]), String::from(split[1]))
-        }));
-
-    process::exec(&env, cmd, args, stdin, stdout)
 }

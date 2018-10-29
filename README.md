@@ -1,7 +1,7 @@
 # rash - the Rust Bourne Shell
 
 
-A dash clone written in rust.
+A bourne shell inspired by dash.
 
 
 # Shell Links

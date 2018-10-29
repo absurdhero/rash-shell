@@ -1,5 +1,6 @@
 
 extern crate pretty_env_logger;
+extern crate nix;
 #[allow(unused)]
 #[macro_use] extern crate log;
 #[macro_use] extern crate lalrpop_util;
@@ -9,7 +10,6 @@ use std::io::Write;
 
 pub mod ast;
 pub mod eval;
-pub mod process;
 
 lalrpop_mod!(pub grammar);
 
