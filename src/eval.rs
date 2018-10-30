@@ -19,7 +19,7 @@ fn complete_command(cc: &ast::CompleteCommand) {
 fn andor_list(async: bool, list: &ast::AndOr) {
     // TODO: Implement async by spawning a thread instead of using before_exec (unix only)
     for (op, pipeline) in &list.pipelines {
-        let result = exec_pipeline(pipeline);
+        let result = exec_pipeline(async, pipeline);
         match op {
             ast::AndOrOp::And => {
                 if result != 0 {
@@ -35,7 +35,7 @@ fn andor_list(async: bool, list: &ast::AndOr) {
     }
 }
 
-fn exec_pipeline(pipeline: &ast::Pipeline) -> i32 {
+fn exec_pipeline(async: bool, pipeline: &ast::Pipeline) -> i32 {
     let mut cmd_list: Vec<Pid> = vec![];
     let mut next_stdin: RawFd = 0;
     let mut cur_stdout: RawFd = 0;
@@ -106,10 +106,20 @@ fn exec_pipeline(pipeline: &ast::Pipeline) -> i32 {
         }
     }
 
+    if async {
+        return 0;
+    }
+
+    let mut return_status = -1;
+
     for child in cmd_list {
         let result = wait::waitpid(Some(child), None);
         match result {
-            Ok(_wait_status) => {
+            Ok(wait_status) => {
+                match wait_status {
+                    wait::WaitStatus::Exited(_pid, r) => return_status = r,
+                    _ => (),
+                }
             }
             Err(e) => {
                 println!("wait failed: {}", e);
@@ -118,5 +128,5 @@ fn exec_pipeline(pipeline: &ast::Pipeline) -> i32 {
     }
 
 
-    return -1;
+    return return_status;
 }
