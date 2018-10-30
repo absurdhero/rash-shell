@@ -98,6 +98,8 @@ fn exec_pipeline(async: bool, pipeline: &ast::Pipeline) -> i32 {
                         // wire up stdin from last thing in pipeline and exec
                         if let Err(e) = execve(&parsed_cmd, &parsed_args, &parsed_env) {
                             println!("could not exec: {}", e);
+                            close(cur_stdin).unwrap();
+                            close(cur_stdout).unwrap();
                         }
                     }
                     Err(_) => println!("Fork failed"),
