@@ -1,12 +1,12 @@
 
 extern crate pretty_env_logger;
 extern crate nix;
+extern crate rustyline;
 #[allow(unused)]
 #[macro_use] extern crate log;
 #[macro_use] extern crate lalrpop_util;
 
-use std::io;
-use std::io::Write;
+use rustyline::error::ReadlineError;
 
 pub mod ast;
 pub mod eval;
@@ -18,26 +18,32 @@ fn main() {
 
     let parser = grammar::programParser::new();
 
-    print!("$ ");
-
     let mut input: String = String::with_capacity(1024);
 
+    let mut rl = rustyline::Editor::<()>::new();
+
     loop {
-        std::io::stdout().flush().expect("could not flush");
 
-        match io::stdin().read_line(&mut input) {
-            Ok(n) => {
-                if n == 0 {
-                    break;
-                }
+        let readline = rl.readline("$ ");
+        match readline {
+            Ok(line) => {
+                input.push_str(line.as_str())
+            },
+            Err(ReadlineError::Interrupted) => {
+                std::process::exit(1)
+            },
+            Err(ReadlineError::Eof) => {
+                std::process::exit(1)
+            },
+            Err(err) => {
+                println!("rash: error: {:?}", err);
+                std::process::exit(1)
             }
-            Err(_error) => std::process::exit(1),
         }
-
-        //debug!("read: {:X?}", input);
 
         match parser.parse(&input) {
             Ok(mut program) => {
+                rl.add_history_entry(input.as_ref());
                 eval::eval(&mut program);
             },
             Err(e) => {
@@ -50,6 +56,5 @@ fn main() {
         }
 
         input.clear();
-        print!("$ ");
     }
 }
