@@ -5,12 +5,14 @@ extern crate log;
 extern crate nix;
 extern crate pretty_env_logger;
 extern crate rustyline;
+extern crate void;
 
 use rustyline::error::ReadlineError;
 
 pub mod ast;
 pub mod context;
 pub mod eval;
+pub mod exec;
 
 lalrpop_mod!(pub grammar);
 

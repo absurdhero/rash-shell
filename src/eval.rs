@@ -1,4 +1,5 @@
 use ast;
+use exec;
 use std::os::unix::io::RawFd;
 use nix::unistd::*;
 use nix::sys::wait;
@@ -100,7 +101,7 @@ fn exec_pipeline(async: bool, pipeline: &ast::Pipeline) -> i32 {
                         dup2( cur_stdin, 0).expect("could not dup stdin");
                         dup2( cur_stdout, 1).expect("could not dup stdout");
                         // wire up stdin from last thing in pipeline and exec
-                        if let Err(e) = execve(&parsed_cmd, &parsed_args, &parsed_env) {
+                        if let Err(e) = exec::exec(&parsed_cmd, &parsed_args, &parsed_env) {
                             println!("could not exec: {}", e);
                             close(cur_stdin).unwrap();
                             close(cur_stdout).unwrap();
