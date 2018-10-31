@@ -1,9 +1,10 @@
 use ast;
 use exec;
-use std::os::unix::io::RawFd;
-use nix::unistd::*;
 use nix::sys::wait;
+use nix::unistd::*;
+use std::env;
 use std::ffi::CString;
+use std::os::unix::io::RawFd;
 
 pub fn eval(program: &ast::Program) -> i32 {
     let mut result = -1;
@@ -51,14 +52,14 @@ fn exec_pipeline(async: bool, pipeline: &ast::Pipeline) -> i32 {
         match command {
             ast::Command::Simple { assign, cmd, args } => {
                 let parsed_cmd = match cmd {
-                    ast::Arg::Arg(s) => CString::new(*s).unwrap(),
+                    ast::Arg::Arg(s) => eval_arg(*s),
                     // TODO: Evaluate the backquoted args as an andor_list and substitute stdout
                     ast::Arg::Backquote(_quoted_args) => CString::new("").unwrap(),
                 };
                 let mut parsed_args: Vec<CString> = vec![parsed_cmd.clone()];
                 parsed_args.extend(args.iter().map(|a| {
                     match a {
-                        ast::Arg::Arg(s) => CString::new(*s).unwrap(),
+                        ast::Arg::Arg(s) => eval_arg(*s),
                         ast::Arg::Backquote(_quoted_args) => CString::new("").unwrap(),
                     }
                 }));
@@ -79,7 +80,7 @@ fn exec_pipeline(async: bool, pipeline: &ast::Pipeline) -> i32 {
                             next_stdin = r;
                         }
                     }
-                } else if i == pipeline.commands.len() -1 {
+                } else if i == pipeline.commands.len() - 1 {
                     cur_stdin = next_stdin;
                     cur_stdout = 1;
                 } else {
@@ -98,8 +99,8 @@ fn exec_pipeline(async: bool, pipeline: &ast::Pipeline) -> i32 {
                         if cur_stdout != 1 { close(cur_stdout).unwrap(); }
                     }
                     Ok(ForkResult::Child) => {
-                        dup2( cur_stdin, 0).expect("could not dup stdin");
-                        dup2( cur_stdout, 1).expect("could not dup stdout");
+                        dup2(cur_stdin, 0).expect("could not dup stdin");
+                        dup2(cur_stdout, 1).expect("could not dup stdout");
                         // wire up stdin from last thing in pipeline and exec
                         if let Err(e) = exec::exec(&parsed_cmd, &parsed_args, &parsed_env) {
                             println!("could not exec: {}", e);
@@ -134,6 +135,17 @@ fn exec_pipeline(async: bool, pipeline: &ast::Pipeline) -> i32 {
         }
     }
 
-
     return return_status;
+}
+
+fn eval_arg(arg: &str) -> CString {
+    if arg.as_bytes()[0] == b'$' {
+        let key: &str = &arg[1..];
+        match env::var(key) {
+            Ok(v) => CString::new(v),
+            Err(_) => CString::new(""),
+        }
+    } else {
+        CString::new(arg)
+    }.unwrap()
 }
