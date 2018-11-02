@@ -3,11 +3,35 @@ use std::env;
 use std::ffi::CString;
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
+use std::os::unix::io::RawFd;
 use std::path::PathBuf;
 use std::str;
 use void::Void;
 
 static ENOENT: nix::Error = nix::Error::Sys(nix::errno::Errno::ENOENT);
+
+/// executes a command and returns the Pid if a child was forked or None if a built-in was called.
+pub fn run_command(cmd: &CString, args: &[CString], env: &[CString], stdin: RawFd, stdout: RawFd) -> Option<Pid> {
+    match fork() {
+        Ok(ForkResult::Parent { child }) => {
+            if stdin != 0 { close(stdin).unwrap(); }
+            if stdout != 1 { close(stdout).unwrap(); }
+            return Some(child);
+        }
+        Ok(ForkResult::Child) => {
+            dup2(stdin, 0).expect("could not dup stdin");
+            dup2(stdout, 1).expect("could not dup stdout");
+            // wire up stdin from last thing in pipeline and exec
+            if let Err(e) = exec(cmd, args, env) {
+                println!("could not exec: {}", e);
+                close(stdin).unwrap();
+                close(stdout).unwrap();
+            }
+        }
+        Err(_) => println!("rash: fork failed"),
+    }
+    return None;
+}
 
 /// search for the filename in the PATH and try to exec until one succeeds
 pub fn exec(filename: &CString, args: &[CString], env: &[CString]) -> nix::Result<Void> {
@@ -33,7 +57,7 @@ pub fn exec(filename: &CString, args: &[CString], env: &[CString]) -> nix::Resul
     match env::var_os("PATH") {
         Some(paths) => {
             for path in env::split_paths(&paths) {
-                if let Err(mut e) =try_exec(&filepath(path, filename), args) {
+                if let Err(mut e) = try_exec(&filepath(path, filename), args) {
                     if first_error == ENOENT {
                         first_error = e;
                     }
