@@ -1,3 +1,4 @@
+use context;
 use nix::unistd::*;
 use std::env;
 use std::ffi::CString;
@@ -11,7 +12,17 @@ use void::Void;
 static ENOENT: nix::Error = nix::Error::Sys(nix::errno::Errno::ENOENT);
 
 /// executes a command and returns the Pid if a child was forked or None if a built-in was called.
-pub fn run_command(cmd: &CString, args: &[CString], env: &[CString], stdin: RawFd, stdout: RawFd) -> Option<Pid> {
+pub fn run_command(context: &mut context::Context,
+                   cmd: &CString,
+                   args: &[CString],
+                   env: &[CString],
+                   stdin: RawFd,
+                   stdout: RawFd) -> Option<Pid> {
+    if let Some(c) = context.builtins.get(cmd) {
+        context.last_return = Some(c(args));
+        return None;
+    }
+
     match fork() {
         Ok(ForkResult::Parent { child }) => {
             if stdin != 0 { close(stdin).unwrap(); }

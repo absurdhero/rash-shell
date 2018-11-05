@@ -10,6 +10,7 @@ extern crate void;
 use rustyline::error::ReadlineError;
 
 pub mod ast;
+pub mod builtins;
 pub mod context;
 pub mod eval;
 pub mod exec;
@@ -20,10 +21,12 @@ lalrpop_mod!(pub grammar);
 fn main() {
     pretty_env_logger::init();
 
-    let mut context = context::Context {
+    let context = context::Context {
         interactive: stdin_is_a_tty(),
         last_return: None,
+        builtins: builtins::Builtins::new(),
     };
+    let mut eval = eval::Eval::new(context);
 
     let parser = grammar::programParser::new();
 
@@ -49,8 +52,8 @@ fn main() {
             }
         }
 
-        if let Some(r) = run_command(&parser, &mut rl, &mut context, input.as_ref()) {
-            context.last_return = Some(r);
+        if let Some(r) = run_command(&parser, &mut rl, &mut eval, input.as_ref()) {
+            eval.context.last_return = Some(r);
         } else {
             continue;
         }
@@ -65,14 +68,14 @@ fn stdin_is_a_tty() -> bool {
 
 fn run_command(parser: &grammar::programParser,
                rl: &mut rustyline::Editor<()>,
-               context: &mut context::Context,
+               eval: &mut eval::Eval,
                input: &str) -> Option<i32> {
     match parser.parse(input) {
         Ok(mut program) => {
-            if context.interactive {
+            if eval.context.interactive {
                 rl.add_history_entry(input);
             }
-            return Some(eval::eval(&mut program));
+            return Some(eval.eval(&mut program));
         }
         Err(e) => {
             if let lalrpop_util::ParseError::UnrecognizedToken { token: None, expected: _ } = e {
