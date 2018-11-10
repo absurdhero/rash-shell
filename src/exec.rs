@@ -4,7 +4,6 @@ use std::env;
 use std::ffi::CString;
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
-use std::os::unix::io::RawFd;
 use std::path::PathBuf;
 use std::str;
 use void::Void;
@@ -16,27 +15,28 @@ pub fn run_command(context: &mut context::Context,
                    cmd: &CString,
                    args: &[CString],
                    env: &[CString],
-                   stdin: RawFd,
-                   stdout: RawFd) -> Option<Pid> {
+                   stdio: context::StdIO) -> Option<Pid> {
     if let Some(c) = context.builtins.get(cmd) {
-        context.last_return = Some(c(args));
+        context.last_return = Some(c(args, stdio));
+        if stdio.stdin != 0 { close(stdio.stdin).unwrap(); }
+        if stdio.stdout != 1 { close(stdio.stdout).unwrap(); }
         return None;
     }
 
     match fork() {
         Ok(ForkResult::Parent { child }) => {
-            if stdin != 0 { close(stdin).unwrap(); }
-            if stdout != 1 { close(stdout).unwrap(); }
+            if stdio.stdin != 0 { close(stdio.stdin).unwrap(); }
+            if stdio.stdout != 1 { close(stdio.stdout).unwrap(); }
             return Some(child);
         }
         Ok(ForkResult::Child) => {
-            dup2(stdin, 0).expect("could not dup stdin");
-            dup2(stdout, 1).expect("could not dup stdout");
+            dup2(stdio.stdin, 0).expect("could not dup stdin");
+            dup2(stdio.stdout, 1).expect("could not dup stdout");
             // wire up stdin from last thing in pipeline and exec
             if let Err(e) = exec(cmd, args, env) {
                 println!("could not exec: {}", e);
-                close(stdin).unwrap();
-                close(stdout).unwrap();
+                close(stdio.stdin).unwrap();
+                close(stdio.stdout).unwrap();
             }
         }
         Err(_) => println!("rash: fork failed"),

@@ -1,12 +1,11 @@
+use context::StdIO;
 use nix::errno::Errno;
 use std::collections::HashMap;
 use std::env;
 use std::ffi::CString;
-use std::ffi::OsString;
 use std::path::Path;
-use std::path::PathBuf;
 
-type Command = fn(&[CString]) -> i32;
+type Command = fn(&[CString], StdIO) -> i32;
 
 pub struct Builtins {
     commands: HashMap<CString, Command>
@@ -31,9 +30,9 @@ impl Builtins {
 }
 
 
-fn cd(args: &[CString]) -> i32 {
+fn cd(args: &[CString], stdio: StdIO) -> i32 {
     if args.len() > 2 {
-        eprintln!("rash: too many arguments");
+        stdio.eprintln(format_args!("rash: too many arguments"));
         return 1;
     }
 
@@ -41,13 +40,12 @@ fn cd(args: &[CString]) -> i32 {
         env::var("HOME").unwrap_or(String::from("/"))
     } else if args[1].as_bytes() == &[b'-'] {
         if let Ok(v) = env::var("OLDPWD") {
-            println!("{}", v);
+            stdio.println(format_args!("{}", v));
             v
         } else {
-            eprintln!("rash: cd: -: OLDPWD not set");
+            stdio.eprintln(format_args!("rash: cd: -: OLDPWD not set"));
             return 1;
         }
-
     } else {
         String::from_utf8(args[1].as_bytes().to_vec()).unwrap()
     };
@@ -62,11 +60,13 @@ fn cd(args: &[CString]) -> i32 {
             }
 
             return 0;
-        },
+        }
         Err(e) => {
-            eprintln!("rash: cd: {}: {}",
-                      path.display(),
-                      Errno::from_i32(e.raw_os_error().unwrap()).desc());
+            stdio.eprintln(
+                format_args!(
+                    "rash: cd: {}: {}",
+                    path.display(),
+                    Errno::from_i32(e.raw_os_error().unwrap()).desc()));
             return 1;
         }
     }

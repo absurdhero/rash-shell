@@ -101,7 +101,8 @@ impl Eval {
                         }
                     };
 
-                    if let Some(pid) = exec::run_command(&mut self.context, &parsed_cmd, &parsed_args, &parsed_env, cur_stdin, cur_stdout) {
+                    if let Some(pid) = exec::run_command(&mut self.context, &parsed_cmd, &parsed_args, &parsed_env,
+                                                         context::StdIO { stdin: cur_stdin, stdout: cur_stdout, stderr: 2 }) {
                         child_list.push(pid);
                     }
                 }
@@ -124,7 +125,7 @@ impl Eval {
                     }
                 }
                 Err(e) => {
-                    println!("wait failed: {}", e);
+                    eprintln!("rash: wait failed: {}", e);
                 }
             }
         }
