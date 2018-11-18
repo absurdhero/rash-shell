@@ -1,7 +1,12 @@
 [package]
-name = "rash"
+name = "rash-shell"
 version = "0.1.0"
 authors = ["Brandon Bremen <bbremen@gmail.com>"]
+description = "A bourne-compatible shell inspired by dash"
+license-file = "LICENSE"
+exclude = [ "./.gitignore" ]
+readme = "README.md"
+repository = "https://github.com/absurdhero/rash-shell"
 
 [build-dependencies]
 lalrpop = "0.16.1"
@@ -14,3 +19,7 @@ regex = "1.0.5"
 nix = "0.11.0"
 rustyline = "2.1.0"
 void = "1.0.2"
+
+[[bin]]
+name = "rash"
+path = "src/main.rs"
