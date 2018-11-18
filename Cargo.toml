@@ -12,8 +12,8 @@ repository = "https://github.com/absurdhero/rash-shell"
 lalrpop = "0.16.1"
 
 [dependencies]
-log = "*"
-pretty_env_logger = "*"
+log = "0.4.6"
+pretty_env_logger = "0.2.5"
 lalrpop-util = "0.16.1"
 regex = "1.0.5"
 nix = "0.11.0"
