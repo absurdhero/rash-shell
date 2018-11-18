@@ -3,9 +3,9 @@ use std::env;
 use std::ffi::CString;
 
 #[derive(Debug, Clone)]
-struct Val {
-    var_eq: CString,
-    export: bool,
+pub struct Val {
+    pub var_eq: Option<CString>,
+    pub export: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -16,24 +16,29 @@ pub struct Environment {
 
 impl Environment {
     pub fn set_var(&mut self, key: &str, val: String) {
-        self.vars.insert(key.to_string(), Val { var_eq: CString::new(format!("{}={}", key, val)).unwrap(), export: false });
+        self.vars.insert(key.to_string(), Val { var_eq: Some(CString::new(format!("{}={}", key, val)).unwrap()), export: false });
     }
 
+    /// sets a variable of the form "KEY=VALUE"
     pub fn set_vareq(&mut self, var_eq: CString) {
-        let key: String;
-        {
-            let mut split = var_eq.as_bytes().split(|b| *b == b'=');
-            key = String::from_utf8_lossy(split.next().unwrap()).to_string();
-        }
-        self.vars.insert(key, Val { var_eq, export: false });
+        let key: String = self.parse_key(&var_eq);
+        self.set_vareq_with_key(key, var_eq);
     }
 
-    pub fn unset_var(&mut self, key: &str) {
+    pub fn set_vareq_with_key(&mut self, key: String, var_eq: CString) {
+        self.vars.entry(key)
+            .or_insert(Val { var_eq: None, export: false })
+            .var_eq = Some(var_eq);
+    }
+
+    pub fn unset(&mut self, key: &str) {
         self.vars.remove(key);
     }
 
     pub fn export(&mut self, key: &str) {
-        self.vars.get_mut(key).map(|v| v.export = true);
+        self.vars.entry(key.to_string())
+            .or_insert(Val { var_eq: None, export: true })
+            .export = true;
     }
 
     pub fn get(&self, key: &str) -> Option<String> {
@@ -42,22 +47,35 @@ impl Environment {
             return None;
         }
 
-        let var_eq = entry.unwrap();
-        let mut split = var_eq.var_eq.as_bytes().split(|b| *b == b'=');
-        let _entry_key = split.next().unwrap();
-        if let Some(value) = split.next() {
-            return Some(String::from_utf8_lossy(value).to_string());
+        if let Some(var_eq) = &entry.unwrap().var_eq {
+            let mut split = var_eq.as_bytes().split(|b| *b == b'=');
+            let _entry_key = split.next().unwrap();
+            if let Some(value) = split.next() {
+                return Some(String::from_utf8_lossy(value).to_string());
+            } else {
+                return Some(String::new());
+            }
         } else {
-            return Some(String::new());
+            return None;
         }
     }
 
     pub fn into_exported(self) -> Vec<CString> {
         self.vars.into_iter()
-            .filter(|(_, v)| v.export)
-            .map(|(_, v)| v.var_eq)
+            .filter(|(_, v)| v.export && v.var_eq.is_some())
+            .map(|(_, v)| v.var_eq.unwrap())
             .collect()
     }
+
+    pub fn iter(&self) -> impl Iterator<Item=(&String, &Val)> {
+        self.vars.iter()
+    }
+
+    pub fn parse_key(&self, var_eq: &CString) -> String {
+        let mut split = var_eq.as_bytes().split(|b| *b == b'=');
+        String::from_utf8_lossy(split.next().unwrap()).to_string()
+    }
+
 }
 
 pub fn empty() -> Environment {

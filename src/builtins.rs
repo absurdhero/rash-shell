@@ -18,6 +18,8 @@ impl Builtins {
             commands: HashMap::new()
         };
         b.insert("cd", cd);
+        b.insert("export", export);
+        b.insert("unset", unset);
         return b;
     }
 
@@ -73,3 +75,40 @@ fn cd(args: &[CString], context: &mut Context, stdio: StdIO) -> i32 {
     }
 }
 
+fn export(args: &[CString], context: &mut Context, stdio: StdIO) -> i32 {
+    if args.len() == 1 || args[1] == CString::new("-p").unwrap() {
+        context.env.iter()
+            .filter(|(_,v)| v.export)
+            .for_each(|(k,v)| {
+                if let Some(veq) = &v.var_eq {
+                    stdio.println(format_args!("export {}", veq.to_string_lossy()));
+                } else {
+                    stdio.println(format_args!("export {}", k));
+                }
+            });
+        return 0;
+    }
+
+    for arg in &args[1..] {
+        let arg_str = arg.to_string_lossy().to_string();
+        if arg_str.contains("=") {
+            let key = context.env.parse_key(arg);
+            context.env.export(&key);
+            context.env.set_vareq_with_key(key, arg.clone());
+        } else {
+            context.env.export(&arg_str)
+        }
+    }
+
+    return 0;
+}
+
+
+fn unset(args: &[CString], context: &mut Context, _stdio: StdIO) -> i32 {
+    for arg in &args[1..] {
+        let arg_str = arg.to_string_lossy().to_string();
+            context.env.unset(&arg_str)
+    }
+
+    return 0;
+}
