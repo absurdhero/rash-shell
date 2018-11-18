@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use std::collections::hash_map::Entry;
+use std::collections::HashMap;
 use std::env;
 use std::ffi::CString;
 
@@ -12,13 +12,12 @@ pub struct Val {
 
 #[derive(Debug, Clone)]
 pub struct Environment {
-    // map from a string key to a key=value formatted CString
     vars: HashMap<String, Val>
 }
 
 impl Environment {
     pub fn set_var(&mut self, key: &str, val: String) {
-        self.vars.insert(key.to_string(), Val { var_eq: Some(CString::new(format!("{}={}", key, val)).unwrap()), ..Default::default() });
+        self.set_vareq_with_key(key.to_string(), CString::new(format!("{}={}", key, val)).unwrap());
     }
 
     /// sets a variable of the form "KEY=VALUE"
@@ -35,9 +34,9 @@ impl Environment {
                 if !v.readonly {
                     v.var_eq = Some(var_eq);
                 }
-            },
+            }
             Entry::Vacant(o) => {
-                o.insert(Val { var_eq: None, ..Default::default() });
+                o.insert(Val { var_eq: Some(var_eq), ..Default::default() });
             }
         }
     }
@@ -97,7 +96,6 @@ impl Environment {
         let mut split = var_eq.as_bytes().split(|b| *b == b'=');
         String::from_utf8_lossy(split.next().unwrap()).to_string()
     }
-
 }
 
 pub fn empty() -> Environment {
