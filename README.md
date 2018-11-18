@@ -66,15 +66,21 @@ Features:
 - [x] variable interpolation
 - [x] environment manipulation (export, unset, readonly, variable prefixes)
 - [x] cd
+- [ ] return values
 - [ ] subshells
 - [ ] interpolating $() and backticks
 - [ ] eval quotes, single quotes
 - [ ] I/O Redirection
-- [ ] read-only variables (including `$?`)
 - [ ] shell startup arguments (e.g. `-c`, `-l`)
 - [ ] `set` command
-- [ ] control flow operators (`if`, `while`)
+- [ ] control flow operators (`if`, `while`, `case`)
 
+Interactive Mode:
+
+- [x] history (not yet configurable or persistent)
+- [x] keybindings (not yet configurable)
+- [ ] configurable settings
+- [ ] tab completion
 
 Quality Improvements:
 
