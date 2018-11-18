@@ -3,7 +3,6 @@ use context;
 use exec;
 use nix::sys::wait;
 use nix::unistd::*;
-use std::env;
 use std::ffi::CString;
 use std::os::unix::io::RawFd;
 
@@ -62,14 +61,14 @@ impl Eval {
             match command {
                 ast::Command::Simple { assign, cmd, args } => {
                     let parsed_cmd = match cmd {
-                        ast::Arg::Arg(s) => eval_arg(*s),
+                        ast::Arg::Arg(s) => self.eval_arg(*s),
                         // TODO: Evaluate the backquoted args as an andor_list and substitute stdout
                         ast::Arg::Backquote(_quoted_args) => CString::new("").unwrap(),
                     };
                     let mut parsed_args: Vec<CString> = vec![parsed_cmd.clone()];
                     parsed_args.extend(args.iter().map(|a| {
                         match a {
-                            ast::Arg::Arg(s) => eval_arg(*s),
+                            ast::Arg::Arg(s) => self.eval_arg(*s),
                             ast::Arg::Backquote(_quoted_args) => CString::new("").unwrap(),
                         }
                     }));
@@ -132,16 +131,16 @@ impl Eval {
 
         return return_status;
     }
-}
 
-fn eval_arg(arg: &str) -> CString {
-    if arg.as_bytes()[0] == b'$' {
-        let key: &str = &arg[1..];
-        match env::var(key) {
-            Ok(v) => CString::new(v),
-            Err(_) => CString::new(""),
-        }
-    } else {
-        CString::new(arg)
-    }.unwrap()
+    fn eval_arg(&self, arg: &str) -> CString {
+        if arg.as_bytes()[0] == b'$' {
+            let key: &str = &arg[1..];
+            match self.context.env.get(key) {
+                Some(v) => CString::new(v),
+                None => CString::new(""),
+            }
+        } else {
+            CString::new(arg)
+        }.unwrap()
+    }
 }

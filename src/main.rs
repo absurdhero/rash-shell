@@ -12,6 +12,7 @@ use rustyline::error::ReadlineError;
 pub mod ast;
 pub mod builtins;
 pub mod context;
+pub mod environment;
 pub mod eval;
 pub mod exec;
 
@@ -25,7 +26,9 @@ fn main() {
         interactive: stdin_is_a_tty(),
         last_return: None,
         builtins: builtins::Builtins::new(),
+        env: environment::from_system(),
     };
+
     let mut eval = eval::Eval::new(context);
 
     let parser = grammar::programParser::new();

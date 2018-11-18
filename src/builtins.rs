@@ -1,3 +1,4 @@
+use context::Context;
 use context::StdIO;
 use nix::errno::Errno;
 use std::collections::HashMap;
@@ -5,7 +6,7 @@ use std::env;
 use std::ffi::CString;
 use std::path::Path;
 
-type Command = fn(&[CString], StdIO) -> i32;
+pub type Command = fn(&[CString], &mut Context, StdIO) -> i32;
 
 pub struct Builtins {
     commands: HashMap<CString, Command>
@@ -30,16 +31,16 @@ impl Builtins {
 }
 
 
-fn cd(args: &[CString], stdio: StdIO) -> i32 {
+fn cd(args: &[CString], context: &mut Context, stdio: StdIO) -> i32 {
     if args.len() > 2 {
         stdio.eprintln(format_args!("rash: too many arguments"));
         return 1;
     }
 
     let dir = if args.len() == 1 {
-        env::var("HOME").unwrap_or(String::from("/"))
+        context.env.get("HOME").unwrap_or(String::from("/"))
     } else if args[1].as_bytes() == &[b'-'] {
-        if let Ok(v) = env::var("OLDPWD") {
+        if let Some(v) = context.env.get("OLDPWD") {
             stdio.println(format_args!("{}", v));
             v
         } else {
@@ -56,7 +57,7 @@ fn cd(args: &[CString], stdio: StdIO) -> i32 {
     match env::set_current_dir(path) {
         Ok(_) => {
             if let Ok(oldpwd) = old {
-                env::set_var("OLDPWD", oldpwd);
+                context.env.set_var("OLDPWD", oldpwd.to_string_lossy().to_string());
             }
 
             return 0;

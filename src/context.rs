@@ -1,4 +1,5 @@
 use builtins;
+use environment;
 use std::fs::File;
 use std::io::Write;
 use std::os::unix::io::FromRawFd;
@@ -12,6 +13,7 @@ pub struct Context {
     pub interactive: bool,
     pub last_return: Option<i32>,
     pub builtins: builtins::Builtins,
+    pub env: environment::Environment,
 }
 
 

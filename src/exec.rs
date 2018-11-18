@@ -1,12 +1,13 @@
-use context;
-use nix::unistd::*;
 use std::env;
 use std::ffi::CString;
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
 use std::path::PathBuf;
-use std::str;
+
+use nix::unistd::*;
 use void::Void;
+
+use context;
 
 static ENOENT: nix::Error = nix::Error::Sys(nix::errno::Errno::ENOENT);
 
@@ -16,8 +17,17 @@ pub fn run_command(context: &mut context::Context,
                    args: &[CString],
                    env: &[CString],
                    stdio: context::StdIO) -> Option<Pid> {
-    if let Some(c) = context.builtins.get(cmd) {
-        context.last_return = Some(c(args, stdio));
+    let maybe_builtin;
+    {
+        maybe_builtin = context.builtins.get(cmd).map(|c| *c)
+    }
+
+    if let Some(c) = maybe_builtin {
+        let ret: Option<i32>;
+        {
+            ret = Some(c(args, context, stdio));
+        }
+        context.last_return = ret;
         if stdio.stdin != 0 { close(stdio.stdin).unwrap(); }
         if stdio.stdout != 1 { close(stdio.stdout).unwrap(); }
         return None;
@@ -33,7 +43,7 @@ pub fn run_command(context: &mut context::Context,
             dup2(stdio.stdin, 0).expect("could not dup stdin");
             dup2(stdio.stdout, 1).expect("could not dup stdout");
             // wire up stdin from last thing in pipeline and exec
-            if let Err(e) = exec(cmd, args, env) {
+            if let Err(e) = exec(context, cmd, args, env) {
                 println!("could not exec: {}", e);
                 close(stdio.stdin).unwrap();
                 close(stdio.stdout).unwrap();
@@ -44,19 +54,21 @@ pub fn run_command(context: &mut context::Context,
     return None;
 }
 
+
 /// search for the filename in the PATH and try to exec until one succeeds
-pub fn exec(filename: &CString, args: &[CString], env: &[CString]) -> nix::Result<Void> {
-    for (k, v) in env.iter().map(|e| {
-        let mut split = e.as_bytes().split(|b| *b == b'=');
-        (OsStr::new(str::from_utf8(split.next().unwrap()).unwrap()),
-         OsStr::new(str::from_utf8(split.next().unwrap_or(&[])).unwrap()))
-    }) {
-        env::set_var(k, v);
+pub fn exec(context: &context::Context, filename: &CString, args: &[CString], env: &[CString]) -> nix::Result<Void> {
+    // add any prefixed variables to the environment
+    let mut child_env = context.env.clone();
+    for v in env.iter() {
+        child_env.set_vareq(v.to_owned());
     }
+
+    let path = child_env.get("PATH");
+    let exported = child_env.into_exported();
 
     // if the filename has any slashes in it, don't search the PATH
     if filename.as_bytes().iter().any(|c| *c == b'/') {
-        return try_exec(filename, args);
+        return try_exec(filename, args, &exported);
     }
 
     // if matching paths are found but none of them can be executed, return the error
@@ -65,10 +77,10 @@ pub fn exec(filename: &CString, args: &[CString], env: &[CString]) -> nix::Resul
 
     let mut first_error: nix::Error = ENOENT;
 
-    match env::var_os("PATH") {
+    match path {
         Some(paths) => {
             for path in env::split_paths(&paths) {
-                if let Err(mut e) = try_exec(&filepath(path, filename), args) {
+                if let Err(mut e) = try_exec(&filepath(path, filename), args, &exported) {
                     if first_error == ENOENT {
                         first_error = e;
                     }
@@ -78,7 +90,7 @@ pub fn exec(filename: &CString, args: &[CString], env: &[CString]) -> nix::Resul
         None => {
             for path in vec!["/bin", "/usr/bin"] {
                 let path_buf = PathBuf::from(path);
-                if let Err(mut e) = try_exec(&filepath(path_buf, filename), args) {
+                if let Err(mut e) = try_exec(&filepath(path_buf, filename), args, &exported) {
                     if first_error == ENOENT {
                         first_error = e;
                     }
@@ -90,8 +102,8 @@ pub fn exec(filename: &CString, args: &[CString], env: &[CString]) -> nix::Resul
     return Err(first_error);
 }
 
-fn try_exec(filepath: &CString, args: &[CString]) -> nix::Result<Void> {
-    execv(filepath, args)
+fn try_exec(filepath: &CString, args: &[CString], exported_env: &[CString]) -> nix::Result<Void> {
+    execve(filepath, args, exported_env)
 }
 
 fn filepath(path: PathBuf, filename: &CString) -> CString {
