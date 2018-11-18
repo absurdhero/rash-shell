@@ -1,11 +1,13 @@
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 use std::env;
 use std::ffi::CString;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Val {
     pub var_eq: Option<CString>,
     pub export: bool,
+    pub readonly: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -16,7 +18,7 @@ pub struct Environment {
 
 impl Environment {
     pub fn set_var(&mut self, key: &str, val: String) {
-        self.vars.insert(key.to_string(), Val { var_eq: Some(CString::new(format!("{}={}", key, val)).unwrap()), export: false });
+        self.vars.insert(key.to_string(), Val { var_eq: Some(CString::new(format!("{}={}", key, val)).unwrap()), ..Default::default() });
     }
 
     /// sets a variable of the form "KEY=VALUE"
@@ -26,19 +28,39 @@ impl Environment {
     }
 
     pub fn set_vareq_with_key(&mut self, key: String, var_eq: CString) {
-        self.vars.entry(key)
-            .or_insert(Val { var_eq: None, export: false })
-            .var_eq = Some(var_eq);
+        match self.vars.entry(key) {
+            Entry::Occupied(mut o) => {
+                let v = o.get_mut();
+                // TODO: return an error if readonly
+                if !v.readonly {
+                    v.var_eq = Some(var_eq);
+                }
+            },
+            Entry::Vacant(o) => {
+                o.insert(Val { var_eq: None, ..Default::default() });
+            }
+        }
     }
 
     pub fn unset(&mut self, key: &str) {
-        self.vars.remove(key);
+        if let Entry::Occupied(o) = self.vars.entry(key.to_string()) {
+            // TODO: return an error if readonly
+            if !o.get().readonly {
+                o.remove();
+            }
+        }
     }
 
     pub fn export(&mut self, key: &str) {
         self.vars.entry(key.to_string())
-            .or_insert(Val { var_eq: None, export: true })
+            .or_insert(Val { ..Default::default() })
             .export = true;
+    }
+
+    pub fn readonly(&mut self, key: &str) {
+        self.vars.entry(key.to_string())
+            .or_insert(Val { ..Default::default() })
+            .readonly = true;
     }
 
     pub fn get(&self, key: &str) -> Option<String> {

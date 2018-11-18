@@ -19,6 +19,7 @@ impl Builtins {
         };
         b.insert("cd", cd);
         b.insert("export", export);
+        b.insert("readonly", readonly);
         b.insert("unset", unset);
         return b;
     }
@@ -103,6 +104,33 @@ fn export(args: &[CString], context: &mut Context, stdio: StdIO) -> i32 {
     return 0;
 }
 
+fn readonly(args: &[CString], context: &mut Context, stdio: StdIO) -> i32 {
+    if args.len() == 1 || args[1] == CString::new("-p").unwrap() {
+        context.env.iter()
+            .filter(|(_,v)| v.readonly)
+            .for_each(|(k,v)| {
+                if let Some(veq) = &v.var_eq {
+                    stdio.println(format_args!("readonly {}", veq.to_string_lossy()));
+                } else {
+                    stdio.println(format_args!("readonly {}", k));
+                }
+            });
+        return 0;
+    }
+
+    for arg in &args[1..] {
+        let arg_str = arg.to_string_lossy().to_string();
+        if arg_str.contains("=") {
+            let key = context.env.parse_key(arg);
+            context.env.readonly(&key);
+            context.env.set_vareq_with_key(key, arg.clone());
+        } else {
+            context.env.readonly(&arg_str)
+        }
+    }
+
+    return 0;
+}
 
 fn unset(args: &[CString], context: &mut Context, _stdio: StdIO) -> i32 {
     for arg in &args[1..] {
