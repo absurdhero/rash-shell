@@ -1,5 +1,8 @@
 # rash - the Rust Bourne Shell
 
+[![Build Status](https://travis-ci.org/absurdhero/rash-shell.svg?branch=master)](https://travis-ci.org/absurdhero/rash-shell)
+![Crates.io](https://img.shields.io/crates/v/rash-shell.svg)
+
 A bourne shell inspired by dash.
 
 ## Goals
