@@ -71,6 +71,7 @@ Features:
 - [ ] interpolating $() and backticks
 - [ ] eval quotes, single quotes
 - [ ] I/O Redirection
+- [ ] job control
 - [ ] shell startup arguments (e.g. `-c`, `-l`)
 - [ ] `set` command
 - [ ] control flow operators (`if`, `while`, `case`)
@@ -84,7 +85,8 @@ Interactive Mode:
 
 Quality Improvements:
 
-- [ ] Compliance test suite (does any shell have one?)
+- [ ] Compliance test suite
+    - See [osh tests](http://www.oilshell.org/cross-ref.html?tag=spec-test#spec-test)
 - [ ] consistent error message format
 - [ ] Path hashing
 - [ ] Other common performance optimizations
@@ -96,6 +98,10 @@ Quality Improvements:
 [POSIX Shell Grammar](http://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_10_02)
 
 [Survey of CLI shell features](https://en.wikipedia.org/wiki/Comparison_of_command_shells)
+
+[ion shell (written in rust)](https://gitlab.redox-os.org/redox-os/ion)
+
+[oursh (written in rust)](https://github.com/nixpulvis/oursh)
 
 # Relevant Rust Language Information
 
