@@ -21,7 +21,7 @@ use std::fmt;
 /// and stores the current shell state.
 pub struct Context {
     pub interactive: bool,
-    pub last_return: Option<i32>,
+    pub last_return: i32,
     pub builtins: builtins::Builtins,
     pub env: environment::Environment,
 }

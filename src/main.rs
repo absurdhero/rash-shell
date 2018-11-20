@@ -34,7 +34,7 @@ fn main() {
 
     let context = context::Context {
         interactive: stdin_is_a_tty(),
-        last_return: None,
+        last_return: 0,
         builtins: builtins::Builtins::new(),
         env: environment::from_system(),
     };
@@ -65,9 +65,7 @@ fn main() {
             }
         }
 
-        if let Some(r) = run_command(&parser, &mut rl, &mut eval, input.as_ref()) {
-            eval.context.last_return = Some(r);
-        } else {
+        if !run_command(&parser, &mut rl, &mut eval, input.as_ref()) {
             continue;
         }
 
@@ -79,23 +77,27 @@ fn stdin_is_a_tty() -> bool {
     nix::unistd::isatty(0).unwrap()
 }
 
+/// Parses and runs a command.
+/// Returns false if the input is incomplete.
 fn run_command(parser: &grammar::programParser,
                rl: &mut rustyline::Editor<()>,
                eval: &mut eval::Eval,
-               input: &str) -> Option<i32> {
+               input: &str) -> bool {
     match parser.parse(input) {
         Ok(mut program) => {
             if eval.context.interactive {
                 rl.add_history_entry(input);
             }
-            return Some(eval.eval(&mut program));
+            eval.eval(&mut program);
+            true
         }
         Err(e) => {
             if let lalrpop_util::ParseError::UnrecognizedToken { token: None, expected: _ } = e {
-                None
+                false
             } else {
                 eprintln!("rash: {}", e);
-                Some(-1)
+                eval.context.last_return = 2;
+                true
             }
         }
     }

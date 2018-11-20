@@ -33,9 +33,9 @@ pub fn run_command(context: &mut context::Context,
     }
 
     if let Some(c) = maybe_builtin {
-        let ret: Option<i32>;
+        let ret: i32;
         {
-            ret = Some(c(args, context, stdio));
+            ret = c(args, context, stdio);
         }
         context.last_return = ret;
         if stdio.stdin != 0 { close(stdio.stdin).unwrap(); }

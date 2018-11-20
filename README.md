@@ -66,7 +66,7 @@ Features:
 - [x] variable interpolation
 - [x] environment manipulation (export, unset, readonly, variable prefixes)
 - [x] cd
-- [ ] return values
+- [x] saving the exit status (`$?`)
 - [ ] subshells
 - [ ] interpolating $() and backticks
 - [ ] eval quotes, single quotes

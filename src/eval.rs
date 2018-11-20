@@ -8,13 +8,15 @@
 //
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use std::ffi::CString;
+use std::os::unix::io::RawFd;
+
+use nix::sys::wait;
+use nix::unistd::*;
+
 use ast;
 use context;
 use exec;
-use nix::sys::wait;
-use nix::unistd::*;
-use std::ffi::CString;
-use std::os::unix::io::RawFd;
 
 pub struct Eval {
     pub context: context::Context,
@@ -25,45 +27,42 @@ impl Eval {
         Eval { context }
     }
 
-    pub fn eval(&mut self, program: &ast::Program) -> i32 {
-        let mut result = -1;
+    pub fn eval(&mut self, program: &ast::Program) {
         for cc in &program.commands.complete_commands {
-            result = self.complete_command(cc);
+            self.complete_command(cc);
         }
-        result
     }
 
-    fn complete_command(&mut self, cc: &ast::CompleteCommand) -> i32 {
-        let mut result = -1;
+    fn complete_command(&mut self, cc: &ast::CompleteCommand) {
         for (op, list) in &cc.and_ors {
-            result = self.andor_list(*op == ast::TermOp::Amp, list);
+            self.andor_list(*op == ast::TermOp::Amp, list);
         }
-        result
     }
 
-    fn andor_list(&mut self, async: bool, list: &ast::AndOr) -> i32 {
+    fn andor_list(&mut self, async: bool, list: &ast::AndOr) {
         for (op, pipeline) in &list.pipelines {
-            let result = self.exec_pipeline(async, pipeline);
+            self.exec_pipeline(async, pipeline);
             match op {
                 ast::AndOrOp::And => {
-                    if result != 0 {
-                        return result;
+                    if self.context.last_return != 0 {
+                        return;
                     }
                 }
                 ast::AndOrOp::Or => {
-                    if result == 0 {
-                        return result;
+                    if self.context.last_return == 0 {
+                        return;
                     }
                 }
             }
         }
-        return -1;
     }
 
-    fn exec_pipeline(&mut self, async: bool, pipeline: &ast::Pipeline) -> i32 {
+    fn exec_pipeline(&mut self, async: bool, pipeline: &ast::Pipeline) {
         let mut child_list: Vec<Pid> = vec![];
         let mut next_stdin: RawFd = 0;
         let mut cur_stdout: RawFd = 0;
+
+        let mut final_return: Option<i32> = None;
 
         for i in 0..pipeline.commands.len() {
             let command = &pipeline.commands[i];
@@ -113,25 +112,30 @@ impl Eval {
                     if let Some(pid) = exec::run_command(&mut self.context, &parsed_cmd, &parsed_args, &parsed_env,
                                                          context::StdIO { stdin: cur_stdin, stdout: cur_stdout, stderr: 2 }) {
                         child_list.push(pid);
+                    } else {
+                        // if the last element in a pipeline is a built-in, record the return value
+                        final_return = Some(self.context.last_return);
                     }
                 }
             }
         }
 
         if async {
-            return 0;
+            // async commands always return 0
+            self.context.last_return = 0;
+            return;
         }
 
-        let mut return_status = -1;
-
-        for child in child_list {
+        // Check children starting with the last one.
+        // Save the return code if it wasn't saved already.
+        for &child in child_list.iter().rev() {
             let result = wait::waitpid(Some(child), None);
             match result {
                 Ok(wait_status) => {
                     match wait_status {
-                        wait::WaitStatus::Exited(_pid, r) => return_status = r,
-                        _ => (),
-                    }
+                        wait::WaitStatus::Exited(_pid, r) => { final_return.get_or_insert(r); },
+                        _ => {},
+                    };
                 }
                 Err(e) => {
                     eprintln!("rash: wait failed: {}", e);
@@ -139,15 +143,21 @@ impl Eval {
             }
         }
 
-        return return_status;
+        if let Some(i) = final_return {
+            self.context.last_return = i;
+        }
     }
 
     fn eval_arg(&self, arg: &str) -> CString {
         if arg.as_bytes()[0] == b'$' {
             let key: &str = &arg[1..];
-            match self.context.env.get(key) {
-                Some(v) => CString::new(v),
-                None => CString::new(""),
+            match key {
+                "?" => CString::new(format!("{}", self.context.last_return)),
+                _ =>
+                    match self.context.env.get(key) {
+                        Some(v) => CString::new(v),
+                        None => CString::new(""),
+                    }
             }
         } else {
             CString::new(arg)
