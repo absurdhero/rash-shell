@@ -14,9 +14,9 @@ use std::os::unix::io::RawFd;
 use nix::sys::wait;
 use nix::unistd::*;
 
-use ast;
-use context;
-use exec;
+use crate::ast;
+use crate::context;
+use crate::exec;
 
 pub struct Eval {
     pub context: context::Context,
@@ -39,9 +39,9 @@ impl Eval {
         }
     }
 
-    fn andor_list(&mut self, async: bool, list: &ast::AndOr) {
+    fn andor_list(&mut self, exec_async: bool, list: &ast::AndOr) {
         for (op, pipeline) in &list.pipelines {
-            self.exec_pipeline(async, pipeline);
+            self.exec_pipeline(exec_async, pipeline);
             match op {
                 ast::AndOrOp::And => {
                     if self.context.last_return != 0 {
@@ -57,7 +57,7 @@ impl Eval {
         }
     }
 
-    fn exec_pipeline(&mut self, async: bool, pipeline: &ast::Pipeline) {
+    fn exec_pipeline(&mut self, exec_async: bool, pipeline: &ast::Pipeline) {
         let mut child_list: Vec<Pid> = vec![];
         let mut next_stdin: RawFd = 0;
         let mut cur_stdout: RawFd = 0;
@@ -120,7 +120,7 @@ impl Eval {
             }
         }
 
-        if async {
+        if exec_async {
             // async commands always return 0
             self.context.last_return = 0;
             return;

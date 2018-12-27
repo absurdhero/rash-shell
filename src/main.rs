@@ -12,10 +12,6 @@
 extern crate lalrpop_util;
 #[macro_use]
 extern crate log;
-extern crate nix;
-extern crate pretty_env_logger;
-extern crate rustyline;
-extern crate void;
 
 use rustyline::error::ReadlineError;
 

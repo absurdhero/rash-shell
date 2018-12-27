@@ -8,13 +8,15 @@
 //
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use context::Context;
-use context::StdIO;
-use nix::errno::Errno;
 use std::collections::HashMap;
 use std::env;
 use std::ffi::CString;
 use std::path::Path;
+
+use nix::errno::Errno;
+
+use crate::context::Context;
+use crate::context::StdIO;
 
 pub type Command = fn(&[CString], &mut Context, StdIO) -> i32;
 

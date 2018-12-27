@@ -17,7 +17,7 @@ use std::path::PathBuf;
 use nix::unistd::*;
 use void::Void;
 
-use context;
+use crate::context;
 
 static ENOENT: nix::Error = nix::Error::Sys(nix::errno::Errno::ENOENT);
 
@@ -90,7 +90,7 @@ pub fn exec(context: &context::Context, filename: &CString, args: &[CString], en
     match path {
         Some(paths) => {
             for path in env::split_paths(&paths) {
-                if let Err(mut e) = try_exec(&filepath(path, filename), args, &exported) {
+                if let Err(e) = try_exec(&filepath(path, filename), args, &exported) {
                     if first_error == ENOENT {
                         first_error = e;
                     }
@@ -100,7 +100,7 @@ pub fn exec(context: &context::Context, filename: &CString, args: &[CString], en
         None => {
             for path in vec!["/bin", "/usr/bin"] {
                 let path_buf = PathBuf::from(path);
-                if let Err(mut e) = try_exec(&filepath(path_buf, filename), args, &exported) {
+                if let Err(e) = try_exec(&filepath(path_buf, filename), args, &exported) {
                     if first_error == ENOENT {
                         first_error = e;
                     }

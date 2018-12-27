@@ -8,7 +8,7 @@
 //
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use ast::{Program, CompleteCommands, CompleteCommand, AndOr, AndOrOp, Pipeline, Command, Arg, TermOp};
+use crate::ast::{Program, CompleteCommands, CompleteCommand, AndOr, AndOrOp, Pipeline, Command, Arg, TermOp};
 
 grammar;
 

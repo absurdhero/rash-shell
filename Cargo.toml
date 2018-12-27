@@ -1,6 +1,7 @@
 [package]
 name = "rash-shell"
 version = "0.1.0"
+edition = "2018"
 authors = ["Brandon Bremen <bbremen@gmail.com>"]
 description = "A bourne-compatible shell inspired by dash"
 license-file = "LICENSE"

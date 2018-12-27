@@ -8,14 +8,15 @@
 //
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use builtins;
-use environment;
+use std::fmt;
 use std::fs::File;
 use std::io::Write;
 use std::os::unix::io::FromRawFd;
 use std::os::unix::io::IntoRawFd;
 use std::os::unix::io::RawFd;
-use std::fmt;
+
+use crate::builtins;
+use crate::environment;
 
 /// An evaluation context defines evaluation settings
 /// and stores the current shell state.
@@ -39,7 +40,8 @@ impl StdIO {
     pub fn println(&self, fmt: fmt::Arguments) {
         unsafe {
             let mut stdout: File = File::from_raw_fd(self.stdout);
-            writeln!(stdout, "{}", fmt);
+            writeln!(stdout, "{}", fmt).unwrap_or_else(
+                |e| std::process::exit(e.raw_os_error().unwrap_or(74 /* EX_IOERR */)));
             stdout.into_raw_fd();
         }
     }
@@ -47,7 +49,8 @@ impl StdIO {
     pub fn eprintln(&self, fmt: fmt::Arguments) {
         unsafe {
             let mut stderr: File = File::from_raw_fd(self.stderr);
-            writeln!(stderr, "{}", fmt);
+            writeln!(stderr, "{}", fmt).unwrap_or_else(
+                |e| std::process::exit(e.raw_os_error().unwrap_or(74 /* EX_IOERR */)));
             stderr.into_raw_fd();
         }
     }
