@@ -134,7 +134,7 @@ pub enum TermOp {
 #[allow(unused_imports)]
 mod tests {
     use super::*;
-    use grammar;
+    use crate::grammar;
 
     #[test]
     fn valid_commands() {
