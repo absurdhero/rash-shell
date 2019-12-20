@@ -88,7 +88,7 @@ fn run_command(parser: &grammar::programParser,
             true
         }
         Err(e) => {
-            if let lalrpop_util::ParseError::UnrecognizedToken { token: None, expected: _ } = e {
+            if let lalrpop_util::ParseError::UnrecognizedToken { token: _, expected: _ } = e {
                 false
             } else {
                 eprintln!("rash: {}", e);

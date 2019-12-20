@@ -113,7 +113,9 @@ pub fn exec(context: &context::Context, filename: &CString, args: &[CString], en
 }
 
 fn try_exec(filepath: &CString, args: &[CString], exported_env: &[CString]) -> nix::Result<Void> {
-    execve(filepath, args, exported_env)
+    execve(filepath,
+           args.iter().map(|c| c.as_c_str()).collect::<Vec<_>>().as_slice(),
+           exported_env.iter().map(|c| c.as_c_str()).collect::<Vec<_>>().as_slice())
 }
 
 fn filepath(path: PathBuf, filename: &CString) -> CString {
