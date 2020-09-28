@@ -10,16 +10,15 @@ readme = "README.md"
 repository = "https://github.com/absurdhero/rash-shell"
 
 [build-dependencies]
-lalrpop = "0.17.2"
+lalrpop = { version = "0.19.1", features = ["lexer"] }
 
 [dependencies]
-log = "0.4.8"
-pretty_env_logger = "0.3.1"
-lalrpop-util = "0.17.2"
-regex = "1.3.1"
-nix = "0.16.0"
-rustyline = "5.0.5"
-void = "1.0.2"
+log = "0.4.11"
+pretty_env_logger = "0.4.0"
+lalrpop-util = "0.19.1"
+regex = "1.3.9"
+nix = "0.18.0"
+rustyline = "6.3.0"
 
 [[bin]]
 name = "rash"

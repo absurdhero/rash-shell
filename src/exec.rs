@@ -9,13 +9,13 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use std::env;
+use std::convert::Infallible;
 use std::ffi::CString;
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
 use std::path::PathBuf;
 
 use nix::unistd::*;
-use void::Void;
 
 use crate::context;
 
@@ -66,7 +66,7 @@ pub fn run_command(context: &mut context::Context,
 
 
 /// search for the filename in the PATH and try to exec until one succeeds
-pub fn exec(context: &context::Context, filename: &CString, args: &[CString], env: &[CString]) -> nix::Result<Void> {
+pub fn exec(context: &context::Context, filename: &CString, args: &[CString], env: &[CString]) -> nix::Result<Infallible> {
     // add any prefixed variables to the environment
     let mut child_env = context.env.clone();
     for v in env.iter() {
@@ -112,7 +112,7 @@ pub fn exec(context: &context::Context, filename: &CString, args: &[CString], en
     return Err(first_error);
 }
 
-fn try_exec(filepath: &CString, args: &[CString], exported_env: &[CString]) -> nix::Result<Void> {
+fn try_exec(filepath: &CString, args: &[CString], exported_env: &[CString]) -> nix::Result<Infallible> {
     execve(filepath,
            args.iter().map(|c| c.as_c_str()).collect::<Vec<_>>().as_slice(),
            exported_env.iter().map(|c| c.as_c_str()).collect::<Vec<_>>().as_slice())
