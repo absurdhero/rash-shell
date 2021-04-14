@@ -43,7 +43,7 @@ pub fn run_command(context: &mut context::Context,
         return None;
     }
 
-    match fork() {
+    match unsafe{fork()} {
         Ok(ForkResult::Parent { child }) => {
             if stdio.stdin != 0 { close(stdio.stdin).unwrap(); }
             if stdio.stdout != 1 { close(stdio.stdout).unwrap(); }
