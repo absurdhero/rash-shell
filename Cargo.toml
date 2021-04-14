@@ -3,9 +3,10 @@ name = "rash-shell"
 version = "0.2.0"
 edition = "2018"
 authors = ["Brandon Bremen <bbremen@gmail.com>"]
+categories = ["command-line-utilities"]
 description = "A bourne-compatible shell inspired by dash"
-license-file = "LICENSE"
 exclude = [ "./.gitignore" ]
+license = "Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/absurdhero/rash-shell"
 
