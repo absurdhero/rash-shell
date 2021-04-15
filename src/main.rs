@@ -41,10 +41,17 @@ fn main() {
 
     let mut input: String = String::with_capacity(1024);
 
+    let mut prompt_level = 1;
     let mut rl = rustyline::Editor::<()>::new();
 
     loop {
-        let readline = rl.readline("$ ");
+        let prompt = if prompt_level == 1 {
+            "$ "
+        } else {
+            "> "
+        };
+
+        let readline = rl.readline(prompt);
         match readline {
             Ok(line) => {
                 input.push_str(line.as_str())
@@ -62,7 +69,10 @@ fn main() {
         }
 
         if !run_command(&parser, &mut rl, &mut eval, input.as_ref()) {
+            prompt_level = 2;
             continue;
+        } else {
+            prompt_level = 1;
         }
 
         input.clear();
@@ -89,6 +99,8 @@ fn run_command(parser: &grammar::programParser,
         }
         Err(e) => {
             if let lalrpop_util::ParseError::UnrecognizedToken { token: _, expected: _ } = e {
+                false
+            } else if let lalrpop_util::ParseError::UnrecognizedEOF { location: _, expected: _ } = e {
                 false
             } else {
                 eprintln!("rash: {}", e);
