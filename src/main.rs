@@ -81,11 +81,11 @@ fn run_command(
     input: &str,
 ) -> bool {
     match parser.parse(input) {
-        Ok(mut program) => {
+        Ok(program) => {
             if eval.context.interactive {
                 rl.add_history_entry(input);
             }
-            eval.eval(&mut program);
+            eval.eval(&program);
             true
         }
         Err(e) => {

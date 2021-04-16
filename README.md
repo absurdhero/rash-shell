@@ -50,7 +50,7 @@ The project is licensed under the Apache License 2.0.
 
 ## Status
 
-With the exception of the most obscure features,
+Except for the most obscure features,
 syntax and functionality are either fully implemented or not at all.
 This means that you can be confident when using the features marked as
 complete below. Any errors or omissions in existing functionality are

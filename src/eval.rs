@@ -89,11 +89,9 @@ impl Eval {
                         next_stdin = 0;
                         if pipeline.commands.len() == 1 {
                             cur_stdout = 1;
-                        } else {
-                            if let Ok((r, w)) = pipe() {
-                                cur_stdout = w;
-                                next_stdin = r;
-                            }
+                        } else if let Ok((r, w)) = pipe() {
+                            cur_stdout = w;
+                            next_stdin = r;
                         }
                     } else if i == pipeline.commands.len() - 1 {
                         cur_stdin = next_stdin;
@@ -138,11 +136,8 @@ impl Eval {
             let result = wait::waitpid(Some(child), None);
             match result {
                 Ok(wait_status) => {
-                    match wait_status {
-                        wait::WaitStatus::Exited(_pid, r) => {
-                            final_return.get_or_insert(r);
-                        }
-                        _ => {}
+                    if let wait::WaitStatus::Exited(_pid, r) = wait_status {
+                        final_return.get_or_insert(r);
                     };
                 }
                 Err(e) => {

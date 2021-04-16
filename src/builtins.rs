@@ -20,20 +20,19 @@ use crate::context::StdIO;
 
 pub type Command = fn(&[CString], &mut Context, StdIO) -> i32;
 
+#[derive(Default)]
 pub struct Builtins {
     commands: HashMap<CString, Command>,
 }
 
 impl Builtins {
     pub fn new() -> Builtins {
-        let mut b = Builtins {
-            commands: HashMap::new(),
-        };
+        let mut b: Builtins = Default::default();
         b.insert("cd", cd);
         b.insert("export", export);
         b.insert("readonly", readonly);
         b.insert("unset", unset);
-        return b;
+        b
     }
 
     fn insert(&mut self, key: &str, val: Command) {
@@ -52,8 +51,8 @@ fn cd(args: &[CString], context: &mut Context, stdio: StdIO) -> i32 {
     }
 
     let dir = if args.len() == 1 {
-        context.env.get("HOME").unwrap_or(String::from("/"))
-    } else if args[1].as_bytes() == &[b'-'] {
+        context.env.get("HOME").unwrap_or_else(|| String::from("/"))
+    } else if args[1].as_bytes() == [b'-'] {
         if let Some(v) = context.env.get("OLDPWD") {
             stdio.println(format_args!("{}", v));
             v
@@ -76,7 +75,7 @@ fn cd(args: &[CString], context: &mut Context, stdio: StdIO) -> i32 {
                     .set_var("OLDPWD", oldpwd.to_string_lossy().to_string());
             }
 
-            return 0;
+            0
         }
         Err(e) => {
             stdio.eprintln(format_args!(
@@ -84,7 +83,7 @@ fn cd(args: &[CString], context: &mut Context, stdio: StdIO) -> i32 {
                 path.display(),
                 Errno::from_i32(e.raw_os_error().unwrap()).desc()
             ));
-            return 1;
+            1
         }
     }
 }
@@ -107,7 +106,7 @@ fn export(args: &[CString], context: &mut Context, stdio: StdIO) -> i32 {
 
     for arg in &args[1..] {
         let arg_str = arg.to_string_lossy().to_string();
-        if arg_str.contains("=") {
+        if arg_str.contains('=') {
             let key = context.env.parse_key(arg);
             context.env.export(&key);
             context.env.set_vareq_with_key(key, arg.clone());
@@ -116,7 +115,7 @@ fn export(args: &[CString], context: &mut Context, stdio: StdIO) -> i32 {
         }
     }
 
-    return 0;
+    0
 }
 
 fn readonly(args: &[CString], context: &mut Context, stdio: StdIO) -> i32 {
@@ -137,7 +136,7 @@ fn readonly(args: &[CString], context: &mut Context, stdio: StdIO) -> i32 {
 
     for arg in &args[1..] {
         let arg_str = arg.to_string_lossy().to_string();
-        if arg_str.contains("=") {
+        if arg_str.contains('=') {
             let key = context.env.parse_key(arg);
             context.env.readonly(&key);
             context.env.set_vareq_with_key(key, arg.clone());
@@ -146,7 +145,7 @@ fn readonly(args: &[CString], context: &mut Context, stdio: StdIO) -> i32 {
         }
     }
 
-    return 0;
+    0
 }
 
 fn unset(args: &[CString], context: &mut Context, _stdio: StdIO) -> i32 {
@@ -155,5 +154,5 @@ fn unset(args: &[CString], context: &mut Context, _stdio: StdIO) -> i32 {
         context.env.unset(&arg_str)
     }
 
-    return 0;
+    0
 }

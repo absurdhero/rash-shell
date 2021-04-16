@@ -85,22 +85,19 @@ impl Environment {
     }
 
     pub fn get(&self, key: &str) -> Option<String> {
-        let entry = self.vars.get(key);
-        if entry.is_none() {
-            return None;
-        }
+        let entry = self.vars.get(key)?;
 
-        if let Some(var_eq) = &entry.unwrap().var_eq {
+        return if let Some(var_eq) = &entry.var_eq {
             let mut split = var_eq.as_bytes().split(|b| *b == b'=');
             let _entry_key = split.next().unwrap();
             if let Some(value) = split.next() {
-                return Some(String::from_utf8_lossy(value).to_string());
+                Some(String::from_utf8_lossy(value).to_string())
             } else {
-                return Some(String::new());
+                Some(String::new())
             }
         } else {
-            return None;
-        }
+            None
+        };
     }
 
     pub fn into_exported(self) -> Vec<CString> {
@@ -122,9 +119,9 @@ impl Environment {
 }
 
 pub fn empty() -> Environment {
-    return Environment {
+    Environment {
         vars: HashMap::new(),
-    };
+    }
 }
 
 pub fn from_system() -> Environment {
@@ -133,5 +130,5 @@ pub fn from_system() -> Environment {
         e.set_var(&k, v);
         e.export(&k);
     });
-    return e;
+    e
 }

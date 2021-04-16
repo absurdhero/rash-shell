@@ -31,7 +31,7 @@ pub fn run_command(
 ) -> Option<Pid> {
     let maybe_builtin;
     {
-        maybe_builtin = context.builtins.get(cmd).map(|c| *c)
+        maybe_builtin = context.builtins.get(cmd).copied()
     }
 
     if let Some(c) = maybe_builtin {
@@ -71,7 +71,7 @@ pub fn run_command(
         }
         Err(_) => println!("rash: fork failed"),
     }
-    return None;
+    None
 }
 
 /// search for the filename in the PATH and try to exec until one succeeds
@@ -112,7 +112,7 @@ pub fn exec(
             }
         }
         None => {
-            for path in vec!["/bin", "/usr/bin"] {
+            for path in &["/bin", "/usr/bin"] {
                 let path_buf = PathBuf::from(path);
                 if let Err(e) = try_exec(&filepath(path_buf, filename), args, &exported) {
                     if first_error == ENOENT {
@@ -123,7 +123,7 @@ pub fn exec(
         }
     }
 
-    return Err(first_error);
+    Err(first_error)
 }
 
 fn try_exec(
