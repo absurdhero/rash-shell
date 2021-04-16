@@ -22,7 +22,7 @@ pub mod environment;
 pub mod eval;
 pub mod exec;
 
-lalrpop_mod!(pub grammar);
+lalrpop_mod!(#[allow(clippy::all)] pub grammar);
 
 fn main() {
     pretty_env_logger::init();
