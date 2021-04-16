@@ -8,8 +8,8 @@
 //
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use std::env;
 use std::convert::Infallible;
+use std::env;
 use std::ffi::CString;
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
@@ -22,11 +22,13 @@ use crate::context;
 static ENOENT: nix::Error = nix::Error::Sys(nix::errno::Errno::ENOENT);
 
 /// executes a command and returns the Pid if a child was forked or None if a built-in was called.
-pub fn run_command(context: &mut context::Context,
-                   cmd: &CString,
-                   args: &[CString],
-                   env: &[CString],
-                   stdio: context::StdIO) -> Option<Pid> {
+pub fn run_command(
+    context: &mut context::Context,
+    cmd: &CString,
+    args: &[CString],
+    env: &[CString],
+    stdio: context::StdIO,
+) -> Option<Pid> {
     let maybe_builtin;
     {
         maybe_builtin = context.builtins.get(cmd).map(|c| *c)
@@ -38,15 +40,23 @@ pub fn run_command(context: &mut context::Context,
             ret = c(args, context, stdio);
         }
         context.last_return = ret;
-        if stdio.stdin != 0 { close(stdio.stdin).unwrap(); }
-        if stdio.stdout != 1 { close(stdio.stdout).unwrap(); }
+        if stdio.stdin != 0 {
+            close(stdio.stdin).unwrap();
+        }
+        if stdio.stdout != 1 {
+            close(stdio.stdout).unwrap();
+        }
         return None;
     }
 
-    match unsafe{fork()} {
+    match unsafe { fork() } {
         Ok(ForkResult::Parent { child }) => {
-            if stdio.stdin != 0 { close(stdio.stdin).unwrap(); }
-            if stdio.stdout != 1 { close(stdio.stdout).unwrap(); }
+            if stdio.stdin != 0 {
+                close(stdio.stdin).unwrap();
+            }
+            if stdio.stdout != 1 {
+                close(stdio.stdout).unwrap();
+            }
             return Some(child);
         }
         Ok(ForkResult::Child) => {
@@ -64,9 +74,13 @@ pub fn run_command(context: &mut context::Context,
     return None;
 }
 
-
 /// search for the filename in the PATH and try to exec until one succeeds
-pub fn exec(context: &context::Context, filename: &CString, args: &[CString], env: &[CString]) -> nix::Result<Infallible> {
+pub fn exec(
+    context: &context::Context,
+    filename: &CString,
+    args: &[CString],
+    env: &[CString],
+) -> nix::Result<Infallible> {
     // add any prefixed variables to the environment
     let mut child_env = context.env.clone();
     for v in env.iter() {
@@ -112,10 +126,23 @@ pub fn exec(context: &context::Context, filename: &CString, args: &[CString], en
     return Err(first_error);
 }
 
-fn try_exec(filepath: &CString, args: &[CString], exported_env: &[CString]) -> nix::Result<Infallible> {
-    execve(filepath,
-           args.iter().map(|c| c.as_c_str()).collect::<Vec<_>>().as_slice(),
-           exported_env.iter().map(|c| c.as_c_str()).collect::<Vec<_>>().as_slice())
+fn try_exec(
+    filepath: &CString,
+    args: &[CString],
+    exported_env: &[CString],
+) -> nix::Result<Infallible> {
+    execve(
+        filepath,
+        args.iter()
+            .map(|c| c.as_c_str())
+            .collect::<Vec<_>>()
+            .as_slice(),
+        exported_env
+            .iter()
+            .map(|c| c.as_c_str())
+            .collect::<Vec<_>>()
+            .as_slice(),
+    )
 }
 
 fn filepath(path: PathBuf, filename: &CString) -> CString {

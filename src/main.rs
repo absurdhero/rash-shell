@@ -24,7 +24,6 @@ pub mod exec;
 
 lalrpop_mod!(pub grammar);
 
-
 fn main() {
     pretty_env_logger::init();
 
@@ -45,23 +44,13 @@ fn main() {
     let mut rl = rustyline::Editor::<()>::new();
 
     loop {
-        let prompt = if prompt_level == 1 {
-            "$ "
-        } else {
-            "> "
-        };
+        let prompt = if prompt_level == 1 { "$ " } else { "> " };
 
         let readline = rl.readline(prompt);
         match readline {
-            Ok(line) => {
-                input.push_str(line.as_str())
-            }
-            Err(ReadlineError::Interrupted) => {
-                std::process::exit(1)
-            }
-            Err(ReadlineError::Eof) => {
-                std::process::exit(1)
-            }
+            Ok(line) => input.push_str(line.as_str()),
+            Err(ReadlineError::Interrupted) => std::process::exit(1),
+            Err(ReadlineError::Eof) => std::process::exit(1),
             Err(err) => {
                 println!("rash: error: {:?}", err);
                 std::process::exit(1)
@@ -85,10 +74,12 @@ fn stdin_is_a_tty() -> bool {
 
 /// Parses and runs a command.
 /// Returns false if the input is incomplete.
-fn run_command(parser: &grammar::programParser,
-               rl: &mut rustyline::Editor<()>,
-               eval: &mut eval::Eval,
-               input: &str) -> bool {
+fn run_command(
+    parser: &grammar::programParser,
+    rl: &mut rustyline::Editor<()>,
+    eval: &mut eval::Eval,
+    input: &str,
+) -> bool {
     match parser.parse(input) {
         Ok(mut program) => {
             if eval.context.interactive {
@@ -98,9 +89,17 @@ fn run_command(parser: &grammar::programParser,
             true
         }
         Err(e) => {
-            if let lalrpop_util::ParseError::UnrecognizedToken { token: _, expected: _ } = e {
+            if let lalrpop_util::ParseError::UnrecognizedToken {
+                token: _,
+                expected: _,
+            } = e
+            {
                 false
-            } else if let lalrpop_util::ParseError::UnrecognizedEOF { location: _, expected: _ } = e {
+            } else if let lalrpop_util::ParseError::UnrecognizedEOF {
+                location: _,
+                expected: _,
+            } = e
+            {
                 false
             } else {
                 eprintln!("rash: {}", e);

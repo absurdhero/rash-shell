@@ -10,7 +10,7 @@
 
 #[derive(Debug, PartialEq)]
 pub struct Program<'a> {
-    pub commands: CompleteCommands<'a>
+    pub commands: CompleteCommands<'a>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -19,7 +19,10 @@ pub struct CompleteCommands<'a> {
 }
 
 impl<'a> CompleteCommands<'a> {
-    pub fn push(mut self: CompleteCommands<'a>, element: CompleteCommand<'a>) -> CompleteCommands<'a> {
+    pub fn push(
+        mut self: CompleteCommands<'a>,
+        element: CompleteCommand<'a>,
+    ) -> CompleteCommands<'a> {
         self.complete_commands.push(element);
         self
     }
@@ -75,7 +78,10 @@ pub struct Pipeline<'a> {
 
 impl<'a> Pipeline<'a> {
     pub fn new(cmd: Command<'a>) -> Pipeline<'a> {
-        Pipeline { commands: vec![cmd], negated: false }
+        Pipeline {
+            commands: vec![cmd],
+            negated: false,
+        }
     }
 
     pub fn negate(mut self) -> Pipeline<'a> {
@@ -108,7 +114,7 @@ pub enum Arg<'a> {
 #[derive(Debug, PartialEq)]
 pub enum TermOp {
     Semi,
-    Amp
+    Amp,
 }
 
 //pub struct Redirect<'a> {
@@ -128,7 +134,6 @@ pub enum TermOp {
 //    TOFD,   // fd <& dupfd
 //    FROMFD, // fd >& dupfd
 //}
-
 
 #[cfg(test)]
 #[allow(unused_imports)]

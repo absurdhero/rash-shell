@@ -21,13 +21,13 @@ use crate::context::StdIO;
 pub type Command = fn(&[CString], &mut Context, StdIO) -> i32;
 
 pub struct Builtins {
-    commands: HashMap<CString, Command>
+    commands: HashMap<CString, Command>,
 }
 
 impl Builtins {
     pub fn new() -> Builtins {
         let mut b = Builtins {
-            commands: HashMap::new()
+            commands: HashMap::new(),
         };
         b.insert("cd", cd);
         b.insert("export", export);
@@ -44,7 +44,6 @@ impl Builtins {
         self.commands.get(key)
     }
 }
-
 
 fn cd(args: &[CString], context: &mut Context, stdio: StdIO) -> i32 {
     if args.len() > 2 {
@@ -72,17 +71,19 @@ fn cd(args: &[CString], context: &mut Context, stdio: StdIO) -> i32 {
     match env::set_current_dir(path) {
         Ok(_) => {
             if let Ok(oldpwd) = old {
-                context.env.set_var("OLDPWD", oldpwd.to_string_lossy().to_string());
+                context
+                    .env
+                    .set_var("OLDPWD", oldpwd.to_string_lossy().to_string());
             }
 
             return 0;
         }
         Err(e) => {
-            stdio.eprintln(
-                format_args!(
-                    "rash: cd: {}: {}",
-                    path.display(),
-                    Errno::from_i32(e.raw_os_error().unwrap()).desc()));
+            stdio.eprintln(format_args!(
+                "rash: cd: {}: {}",
+                path.display(),
+                Errno::from_i32(e.raw_os_error().unwrap()).desc()
+            ));
             return 1;
         }
     }
@@ -90,9 +91,11 @@ fn cd(args: &[CString], context: &mut Context, stdio: StdIO) -> i32 {
 
 fn export(args: &[CString], context: &mut Context, stdio: StdIO) -> i32 {
     if args.len() == 1 || args[1] == CString::new("-p").unwrap() {
-        context.env.iter()
-            .filter(|(_,v)| v.export)
-            .for_each(|(k,v)| {
+        context
+            .env
+            .iter()
+            .filter(|(_, v)| v.export)
+            .for_each(|(k, v)| {
                 if let Some(veq) = &v.var_eq {
                     stdio.println(format_args!("export {}", veq.to_string_lossy()));
                 } else {
@@ -118,9 +121,11 @@ fn export(args: &[CString], context: &mut Context, stdio: StdIO) -> i32 {
 
 fn readonly(args: &[CString], context: &mut Context, stdio: StdIO) -> i32 {
     if args.len() == 1 || args[1] == CString::new("-p").unwrap() {
-        context.env.iter()
-            .filter(|(_,v)| v.readonly)
-            .for_each(|(k,v)| {
+        context
+            .env
+            .iter()
+            .filter(|(_, v)| v.readonly)
+            .for_each(|(k, v)| {
                 if let Some(veq) = &v.var_eq {
                     stdio.println(format_args!("readonly {}", veq.to_string_lossy()));
                 } else {
@@ -147,7 +152,7 @@ fn readonly(args: &[CString], context: &mut Context, stdio: StdIO) -> i32 {
 fn unset(args: &[CString], context: &mut Context, _stdio: StdIO) -> i32 {
     for arg in &args[1..] {
         let arg_str = arg.to_string_lossy().to_string();
-            context.env.unset(&arg_str)
+        context.env.unset(&arg_str)
     }
 
     return 0;

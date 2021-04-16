@@ -75,15 +75,12 @@ impl Eval {
                         ast::Arg::Backquote(_quoted_args) => CString::new("").unwrap(),
                     };
                     let mut parsed_args: Vec<CString> = vec![parsed_cmd.clone()];
-                    parsed_args.extend(args.iter().map(|a| {
-                        match a {
-                            ast::Arg::Arg(s) => self.eval_arg(*s),
-                            ast::Arg::Backquote(_quoted_args) => CString::new("").unwrap(),
-                        }
+                    parsed_args.extend(args.iter().map(|a| match a {
+                        ast::Arg::Arg(s) => self.eval_arg(*s),
+                        ast::Arg::Backquote(_quoted_args) => CString::new("").unwrap(),
                     }));
-                    let parsed_env: Vec<CString> = assign.iter().map(|a| {
-                        CString::new(*a).unwrap()
-                    }).collect();
+                    let parsed_env: Vec<CString> =
+                        assign.iter().map(|a| CString::new(*a).unwrap()).collect();
 
                     let cur_stdin: RawFd;
 
@@ -109,8 +106,17 @@ impl Eval {
                         }
                     };
 
-                    if let Some(pid) = exec::run_command(&mut self.context, &parsed_cmd, &parsed_args, &parsed_env,
-                                                         context::StdIO { stdin: cur_stdin, stdout: cur_stdout, stderr: 2 }) {
+                    if let Some(pid) = exec::run_command(
+                        &mut self.context,
+                        &parsed_cmd,
+                        &parsed_args,
+                        &parsed_env,
+                        context::StdIO {
+                            stdin: cur_stdin,
+                            stdout: cur_stdout,
+                            stderr: 2,
+                        },
+                    ) {
                         child_list.push(pid);
                     } else {
                         // if the last element in a pipeline is a built-in, record the return value
@@ -133,8 +139,10 @@ impl Eval {
             match result {
                 Ok(wait_status) => {
                     match wait_status {
-                        wait::WaitStatus::Exited(_pid, r) => { final_return.get_or_insert(r); },
-                        _ => {},
+                        wait::WaitStatus::Exited(_pid, r) => {
+                            final_return.get_or_insert(r);
+                        }
+                        _ => {}
                     };
                 }
                 Err(e) => {
@@ -153,14 +161,14 @@ impl Eval {
             let key: &str = &arg[1..];
             match key {
                 "?" => CString::new(format!("{}", self.context.last_return)),
-                _ =>
-                    match self.context.env.get(key) {
-                        Some(v) => CString::new(v),
-                        None => CString::new(""),
-                    }
+                _ => match self.context.env.get(key) {
+                    Some(v) => CString::new(v),
+                    None => CString::new(""),
+                },
             }
         } else {
             CString::new(arg)
-        }.unwrap()
+        }
+        .unwrap()
     }
 }

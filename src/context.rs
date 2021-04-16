@@ -27,7 +27,6 @@ pub struct Context {
     pub env: environment::Environment,
 }
 
-
 /// encapsulates stdio file descriptors
 #[derive(Debug, Copy, Clone)]
 pub struct StdIO {
@@ -40,8 +39,9 @@ impl StdIO {
     pub fn println(&self, fmt: fmt::Arguments) {
         unsafe {
             let mut stdout: File = File::from_raw_fd(self.stdout);
-            writeln!(stdout, "{}", fmt).unwrap_or_else(
-                |e| std::process::exit(e.raw_os_error().unwrap_or(74 /* EX_IOERR */)));
+            writeln!(stdout, "{}", fmt).unwrap_or_else(|e| {
+                std::process::exit(e.raw_os_error().unwrap_or(74 /* EX_IOERR */))
+            });
             stdout.into_raw_fd();
         }
     }
@@ -49,8 +49,9 @@ impl StdIO {
     pub fn eprintln(&self, fmt: fmt::Arguments) {
         unsafe {
             let mut stderr: File = File::from_raw_fd(self.stderr);
-            writeln!(stderr, "{}", fmt).unwrap_or_else(
-                |e| std::process::exit(e.raw_os_error().unwrap_or(74 /* EX_IOERR */)));
+            writeln!(stderr, "{}", fmt).unwrap_or_else(|e| {
+                std::process::exit(e.raw_os_error().unwrap_or(74 /* EX_IOERR */))
+            });
             stderr.into_raw_fd();
         }
     }

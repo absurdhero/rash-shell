@@ -22,12 +22,15 @@ pub struct Val {
 
 #[derive(Debug, Clone)]
 pub struct Environment {
-    vars: HashMap<String, Val>
+    vars: HashMap<String, Val>,
 }
 
 impl Environment {
     pub fn set_var(&mut self, key: &str, val: String) {
-        self.set_vareq_with_key(key.to_string(), CString::new(format!("{}={}", key, val)).unwrap());
+        self.set_vareq_with_key(
+            key.to_string(),
+            CString::new(format!("{}={}", key, val)).unwrap(),
+        );
     }
 
     /// sets a variable of the form "KEY=VALUE"
@@ -46,7 +49,10 @@ impl Environment {
                 }
             }
             Entry::Vacant(o) => {
-                o.insert(Val { var_eq: Some(var_eq), ..Default::default() });
+                o.insert(Val {
+                    var_eq: Some(var_eq),
+                    ..Default::default()
+                });
             }
         }
     }
@@ -61,14 +67,20 @@ impl Environment {
     }
 
     pub fn export(&mut self, key: &str) {
-        self.vars.entry(key.to_string())
-            .or_insert(Val { ..Default::default() })
+        self.vars
+            .entry(key.to_string())
+            .or_insert(Val {
+                ..Default::default()
+            })
             .export = true;
     }
 
     pub fn readonly(&mut self, key: &str) {
-        self.vars.entry(key.to_string())
-            .or_insert(Val { ..Default::default() })
+        self.vars
+            .entry(key.to_string())
+            .or_insert(Val {
+                ..Default::default()
+            })
             .readonly = true;
     }
 
@@ -92,13 +104,14 @@ impl Environment {
     }
 
     pub fn into_exported(self) -> Vec<CString> {
-        self.vars.into_iter()
+        self.vars
+            .into_iter()
             .filter(|(_, v)| v.export && v.var_eq.is_some())
             .map(|(_, v)| v.var_eq.unwrap())
             .collect()
     }
 
-    pub fn iter(&self) -> impl Iterator<Item=(&String, &Val)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&String, &Val)> {
         self.vars.iter()
     }
 
@@ -109,7 +122,9 @@ impl Environment {
 }
 
 pub fn empty() -> Environment {
-    return Environment { vars: HashMap::new() };
+    return Environment {
+        vars: HashMap::new(),
+    };
 }
 
 pub fn from_system() -> Environment {
