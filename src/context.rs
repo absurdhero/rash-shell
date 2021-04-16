@@ -29,13 +29,13 @@ pub struct Context {
 
 /// encapsulates stdio file descriptors
 #[derive(Debug, Copy, Clone)]
-pub struct StdIO {
+pub struct StdIo {
     pub stdin: RawFd,
     pub stdout: RawFd,
     pub stderr: RawFd,
 }
 
-impl StdIO {
+impl StdIo {
     pub fn println(&self, fmt: fmt::Arguments) {
         unsafe {
             let mut stdout: File = File::from_raw_fd(self.stdout);

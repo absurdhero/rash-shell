@@ -27,7 +27,7 @@ pub fn run_command(
     cmd: &CString,
     args: &[CString],
     env: &[CString],
-    stdio: context::StdIO,
+    stdio: context::StdIo,
 ) -> Option<Pid> {
     let maybe_builtin;
     {

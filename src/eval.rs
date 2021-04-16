@@ -109,7 +109,7 @@ impl Eval {
                         &parsed_cmd,
                         &parsed_args,
                         &parsed_env,
-                        context::StdIO {
+                        context::StdIo {
                             stdin: cur_stdin,
                             stdout: cur_stdout,
                             stderr: 2,

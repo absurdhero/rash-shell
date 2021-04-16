@@ -16,9 +16,9 @@ use std::path::Path;
 use nix::errno::Errno;
 
 use crate::context::Context;
-use crate::context::StdIO;
+use crate::context::StdIo;
 
-pub type Command = fn(&[CString], &mut Context, StdIO) -> i32;
+pub type Command = fn(&[CString], &mut Context, StdIo) -> i32;
 
 #[derive(Default)]
 pub struct Builtins {
@@ -44,7 +44,7 @@ impl Builtins {
     }
 }
 
-fn cd(args: &[CString], context: &mut Context, stdio: StdIO) -> i32 {
+fn cd(args: &[CString], context: &mut Context, stdio: StdIo) -> i32 {
     if args.len() > 2 {
         stdio.eprintln(format_args!("rash: too many arguments"));
         return 1;
@@ -88,7 +88,7 @@ fn cd(args: &[CString], context: &mut Context, stdio: StdIO) -> i32 {
     }
 }
 
-fn export(args: &[CString], context: &mut Context, stdio: StdIO) -> i32 {
+fn export(args: &[CString], context: &mut Context, stdio: StdIo) -> i32 {
     if args.len() == 1 || args[1] == CString::new("-p").unwrap() {
         context
             .env
@@ -118,7 +118,7 @@ fn export(args: &[CString], context: &mut Context, stdio: StdIO) -> i32 {
     0
 }
 
-fn readonly(args: &[CString], context: &mut Context, stdio: StdIO) -> i32 {
+fn readonly(args: &[CString], context: &mut Context, stdio: StdIo) -> i32 {
     if args.len() == 1 || args[1] == CString::new("-p").unwrap() {
         context
             .env
@@ -148,7 +148,7 @@ fn readonly(args: &[CString], context: &mut Context, stdio: StdIO) -> i32 {
     0
 }
 
-fn unset(args: &[CString], context: &mut Context, _stdio: StdIO) -> i32 {
+fn unset(args: &[CString], context: &mut Context, _stdio: StdIo) -> i32 {
     for arg in &args[1..] {
         let arg_str = arg.to_string_lossy().to_string();
         context.env.unset(&arg_str)
