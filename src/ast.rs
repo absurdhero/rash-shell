@@ -138,16 +138,44 @@ pub enum TermOp {
 #[cfg(test)]
 #[allow(unused_imports)]
 mod tests {
+    use lalrpop_util::lexer::Token;
+    use lalrpop_util::ParseError;
+
+    use crate::lexer::{LexError, Tok};
+    use crate::{ast, grammar, lexer};
+
     use super::*;
-    use crate::grammar;
+
+    fn try_parse(input: &str) -> Result<ast::Program, ParseError<usize, Tok, LexError>> {
+        let parser = grammar::programParser::new();
+        let lexer = lexer::Lexer::new(input);
+        return parser.parse(input, lexer);
+    }
+
+    fn parse(input: &str) -> ast::Program<'_> {
+        return try_parse(input).unwrap();
+    }
+
+    fn complete_command<'a>(program: &'a ast::Program) -> &'a Vec<(TermOp, AndOr<'a>)> {
+        return &program.commands.complete_commands.get(0).unwrap().and_ors;
+    }
 
     #[test]
     fn valid_commands() {
-        let parser = grammar::programParser::new();
+        assert!(try_parse("test\n").is_ok());
+        assert!(try_parse("test foo &\n").is_ok());
+        assert!(try_parse("test | | \n").is_err());
+    }
 
-        assert!(parser.parse("test\n").is_ok());
-        assert!(parser.parse("test foo &\n").is_ok());
+    #[test]
+    fn semicolon_delimiter() {
+        // these should parse as two commands
+        assert_eq!(complete_command(&parse("echo foo; bar")).len(), 2);
+        assert_eq!(complete_command(&parse("echo foo;bar")).len(), 2);
 
-        assert!(parser.parse("test | | \n").is_err());
+        // these should parse as one command
+        assert_eq!(complete_command(&parse("echo \"foo; bar\"")).len(), 1);
+        assert_eq!(complete_command(&parse("echo 'foo; bar'")).len(), 1);
+        assert_eq!(complete_command(&parse("echo `foo; bar`")).len(), 1);
     }
 }

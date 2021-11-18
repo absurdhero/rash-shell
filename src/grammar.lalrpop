@@ -9,8 +9,9 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::ast::{Program, CompleteCommands, CompleteCommand, AndOr, AndOrOp, Pipeline, Command, Arg, TermOp};
+use crate::lexer::{LexError, Tok};
 
-grammar;
+grammar<'input>(input: &'input str);
 
 pub program: Program<'input> = {
     linebreak <complete_commands> linebreak => Program { commands: <> },
@@ -40,7 +41,7 @@ and_or: AndOr<'input> = {
 
 pipeline: Pipeline<'input> = {
     pipe_sequence,
-    Bang <pipe_sequence> => <>.negate()
+    "!" <pipe_sequence> => <>.negate()
 }
 
 pipe_sequence: Pipeline<'input> = {
@@ -111,56 +112,73 @@ sequential_sep: () = {
     newline_list,
 }
 
-match {
-    "&&" => AND_IF,
-    "||" => OR_IF,
-    ";;" => DSEMI,
-    "<<" => DLESS,
-    ">>" => DGREAT,
-    "<&" => LESSAND,
-    ">&" => GREATAND,
-    "<>" => LESSGREAT,
-    "<<-" => DLESSDASH,
-    ">|" => CLOBBER,
+//match {
+//    "&&" => AND_IF,
+//    "||" => OR_IF,
+//    ";;" => DSEMI,
+//    "<<" => DLESS,
+//    ">>" => DGREAT,
+//    "<&" => LESSAND,
+//    ">&" => GREATAND,
+//    "<>" => LESSGREAT,
+//    "<<-" => DLESSDASH,
+//    ">|" => CLOBBER,
+//
+//
+//// The following are the reserved words.
+//
+//    "if" => If,
+//    "then" => Then,
+//    "else" => Else,
+//    "elif" => Elif,
+//    "fi" => Fi,
+//    "do" => Do,
+//    "done" => Done,
+//
+//    "case" => Case,
+//    "esac" => Esac,
+//    "while" => While,
+//    "until" => Until,
+//    "for" => For,
+//
+//
+//// These are reserved words, not operator tokens, and are
+//// recognized when reserved words are recognized.
+//
+//    "{" => Lbrace,
+//    "}" => Rbrace,
+//    "!" => Bang,
+//    "in" => In,
+//
+//    r"[a-zA-Z_][a-zA-Z0-9_]*=\S+" => ASSIGNMENT_WORD,
+//} else {
+//    r"\x22([^\x22]|\\\x22)+\x22" => DQUOTE_WORD,
+//    r"'([^']|\\')+'" => SQUOTE_WORD,
+//    r"`([^`]|\\`)+`" => BACKTICK_WORD,
+//    r"[^\s'\x22`][^\s|&;{}!><]*" => BARE_WORD,
+//    r"(\n|(\r\n))" => NEWLINE,
+//
+////%token  NAME
+////%token  IO_NUMBER
+//}
 
+extern {
+    type Location = usize;
+    type Error =  LexError<'input>;
 
-// The following are the reserved words.
-
-    "if" => If,
-    "then" => Then,
-    "else" => Else,
-    "elif" => Elif,
-    "fi" => Fi,
-    "do" => Do,
-    "done" => Done,
-
-    "case" => Case,
-    "esac" => Esac,
-    "while" => While,
-    "until" => Until,
-    "for" => For,
-
-
-// These are reserved words, not operator tokens, and are
-// recognized when reserved words are recognized.
-
-    "{" => Lbrace,
-    "}" => Rbrace,
-    "!" => Bang,
-    "in" => In,
-
-    "|",
-    "&",
-    ";",
-
-    r"[a-zA-Z_][a-zA-Z0-9_]*=\S+" => ASSIGNMENT_WORD,
-} else {
-    r"\x22([^\x22]|\\\x22)+\x22" => DQUOTE_WORD,
-    r"'([^']|\\')+'" => SQUOTE_WORD,
-    r"`([^`]|\\`)+`" => BACKTICK_WORD,
-    r"[^\s'\x22`][^\s|&;{}!><]*" => BARE_WORD,
-    r"(\n|(\r\n))" => NEWLINE,
-
-//%token  NAME
-//%token  IO_NUMBER
+    enum Tok<'input> {
+        "!" => Tok::BareWord("!"),
+        DQUOTE_WORD => Tok::DQuoteWord(<&'input str>),
+        SQUOTE_WORD => Tok::SQuoteWord(<&'input str>),
+        BACKTICK_WORD => Tok::BacktickWord(<&'input str>),
+        ASSIGNMENT_WORD => Tok::AssignmentWord(<&'input str>),
+        BARE_WORD => Tok::BareWord(<&'input str>),
+        //ASSIGNMENT_WORD => Tok::AssignmentWord(<&'input str>),
+        "|" => Tok::Pipe,
+        "&" => Tok::Ampersand,
+        ";" => Tok::Semicolon,
+        AND_IF => Tok::AndIf,
+        OR_IF => Tok::OrIf,
+        NEWLINE => Tok::Newline
+    }
 }
