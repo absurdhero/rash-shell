@@ -95,10 +95,17 @@ fn run_command(
             lalrpop_util::ParseError::UnrecognizedToken {
                 token: _,
                 expected: _,
+            } => {
+                eprintln!("rash: {}", e);
+                eval.context.last_return = 2;
+                true
             }
-            | lalrpop_util::ParseError::UnrecognizedEOF {
+            lalrpop_util::ParseError::UnrecognizedEOF {
                 location: _,
                 expected: _,
+            }
+            | lalrpop_util::ParseError::User {
+                error: lexer::LexError::UnexpectedEOF(_),
             } => false,
             _ => {
                 eprintln!("rash: {}", e);
