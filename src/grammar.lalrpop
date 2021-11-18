@@ -113,18 +113,6 @@ sequential_sep: () = {
 }
 
 //match {
-//    "&&" => AND_IF,
-//    "||" => OR_IF,
-//    ";;" => DSEMI,
-//    "<<" => DLESS,
-//    ">>" => DGREAT,
-//    "<&" => LESSAND,
-//    ">&" => GREATAND,
-//    "<>" => LESSGREAT,
-//    "<<-" => DLESSDASH,
-//    ">|" => CLOBBER,
-//
-//
 //// The following are the reserved words.
 //
 //    "if" => If,
@@ -168,17 +156,26 @@ extern {
 
     enum Tok<'input> {
         "!" => Tok::BareWord("!"),
+        ASSIGNMENT_WORD => Tok::AssignmentWord(<&'input str>),
+        BACKTICK_WORD => Tok::BacktickWord(<&'input str>),
+        BARE_WORD => Tok::BareWord(<&'input str>),
         DQUOTE_WORD => Tok::DQuoteWord(<&'input str>),
         SQUOTE_WORD => Tok::SQuoteWord(<&'input str>),
-        BACKTICK_WORD => Tok::BacktickWord(<&'input str>),
-        ASSIGNMENT_WORD => Tok::AssignmentWord(<&'input str>),
-        BARE_WORD => Tok::BareWord(<&'input str>),
-        //ASSIGNMENT_WORD => Tok::AssignmentWord(<&'input str>),
-        "|" => Tok::Pipe,
-        "&" => Tok::Ampersand,
-        ";" => Tok::Semicolon,
-        AND_IF => Tok::AndIf,
-        OR_IF => Tok::OrIf,
+        "|" => Tok::Operator("|"),
+        "&" => Tok::Operator("&"),
+        ";" => Tok::Operator(";"),
+        AND_IF => Tok::Operator("&&"),
+        OR_IF => Tok::Operator("||"),
+        DSEMI => Tok::Operator(";;"),
+        ">" => Tok::Operator(">"),
+        "<" => Tok::Operator("<"),
+        DLESS => Tok::Operator("<<"),
+        DGREAT => Tok::Operator(">>"),
+        LESSAND => Tok::Operator("<&"),
+        GREATAND => Tok::Operator(">&"),
+        LESSGRAND => Tok::Operator("<>"),
+        DLESSDASH => Tok::Operator("<<-"),
+        CLOBBER => Tok::Operator(">|"),
         NEWLINE => Tok::Newline
     }
 }

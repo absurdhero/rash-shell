@@ -160,6 +160,12 @@ mod tests {
         return &program.commands.complete_commands.get(0).unwrap().and_ors;
     }
 
+    fn single_command<'a>(program: &'a ast::Program) -> &'a Command<'a> {
+        return &program.commands.complete_commands[0].and_ors[0].1.pipelines[0]
+            .1
+            .commands[0];
+    }
+
     #[test]
     fn valid_commands() {
         assert!(try_parse("test\n").is_ok());
@@ -172,10 +178,37 @@ mod tests {
         // these should parse as two commands
         assert_eq!(complete_command(&parse("echo foo; bar")).len(), 2);
         assert_eq!(complete_command(&parse("echo foo;bar")).len(), 2);
+        assert_eq!(complete_command(&parse("echo $foo;bar")).len(), 2);
 
         // these should parse as one command
         assert_eq!(complete_command(&parse("echo \"foo; bar\"")).len(), 1);
         assert_eq!(complete_command(&parse("echo 'foo; bar'")).len(), 1);
         assert_eq!(complete_command(&parse("echo `foo; bar`")).len(), 1);
+    }
+
+    #[test]
+    fn simple_argument_parsing() {
+        // argument parsing
+        let program = parse("echo");
+        let Command::Simple { args, assign: _, cmd } = single_command(&program);
+        assert_eq!(cmd, &Arg::Arg("echo"));
+        assert_eq!(args.len(), 0);
+
+        let program = parse("echo foo");
+        let Command::Simple { args, assign: _, cmd: _ } = single_command(&program);
+        assert_eq!(args.len(), 1);
+
+        let program = parse("echo \"foo\"");
+        let Command::Simple { args, assign: _, cmd: _ } = single_command(&program);
+        assert_eq!(args.len(), 1);
+
+        // Fails because the lexer delimits tokens on "
+        // let program = parse("echo \"foo\"bar");
+        // let Command::Simple { args, assign: _, cmd: _ } = single_command(&program);
+        // assert_eq!(args.len(), 1);
+
+        let program = parse("echo \"foo\" bar");
+        let Command::Simple { args, assign: _, cmd: _ } = single_command(&program);
+        assert_eq!(args.len(), 2);
     }
 }

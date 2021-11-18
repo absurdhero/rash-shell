@@ -3,17 +3,13 @@ use std::str::CharIndices;
 
 #[derive(Copy, Clone, Debug)]
 pub enum Tok<'input> {
+    AssignmentWord(&'input str),
+    BacktickWord(&'input str),
     BareWord(&'input str),
     DQuoteWord(&'input str),
     SQuoteWord(&'input str),
-    BacktickWord(&'input str),
-    AssignmentWord(&'input str),
-    Pipe,
-    Ampersand,
-    Semicolon,
+    Operator(&'input str),
     Newline,
-    AndIf,
-    OrIf,
 }
 
 impl<'input> fmt::Display for Tok<'input> {
@@ -69,6 +65,23 @@ impl<'input> Lexer<'input> {
             }
         }
     }
+
+    fn choose_operator(
+        &mut self,
+        i: usize,
+        single: &'input str,
+        double: &'input str,
+    ) -> Option<<Lexer<'input> as Iterator>::Item> {
+        let ret;
+        match self.chars.peek() {
+            Some((j, p)) if *p == double.chars().nth(1).unwrap() => {
+                ret = Some(Ok((i, Tok::Operator(double), *j)));
+                self.chars.next();
+            }
+            _ => ret = Some(Ok((i, Tok::Operator(single), i + 1))),
+        };
+        return ret;
+    }
 }
 
 impl<'input> Iterator for Lexer<'input> {
@@ -81,9 +94,52 @@ impl<'input> Iterator for Lexer<'input> {
             match self.chars.next() {
                 Some((_, ' ')) | Some((_, '\t')) => continue,
                 Some((i, '\n')) => return Some(Ok((i, Tok::Newline, i + 1))),
-                Some((i, '|')) => return Some(Ok((i, Tok::Pipe, i + 1))),
-                Some((i, '&')) => return Some(Ok((i, Tok::Ampersand, i + 1))),
-                Some((i, ';')) => return Some(Ok((i, Tok::Semicolon, i + 1))),
+                Some((i, '|')) => return self.choose_operator(i, "|", "||"),
+                Some((i, '&')) => return self.choose_operator(i, "&", "&&"),
+                Some((i, ';')) => return self.choose_operator(i, ";", ";;"),
+                Some((i, '>')) => {
+                    let ret;
+                    match self.chars.peek() {
+                        Some((j, '>')) => {
+                            ret = Some(Ok((i, Tok::Operator(">>"), *j)));
+                            self.chars.next();
+                        }
+                        Some((j, '|')) => {
+                            ret = Some(Ok((i, Tok::Operator(">|"), *j)));
+                            self.chars.next();
+                        }
+                        Some((j, '&')) => {
+                            ret = Some(Ok((i, Tok::Operator(">&"), *j)));
+                            self.chars.next();
+                        }
+                        _ => ret = Some(Ok((i, Tok::Operator(">"), i + 1))),
+                    };
+                    return ret;
+                }
+                Some((i, '<')) => {
+                    let ret;
+                    match self.chars.peek() {
+                        Some((j, '>')) => {
+                            ret = Some(Ok((i, Tok::Operator("<>"), *j)));
+                            self.chars.next();
+                        }
+                        Some((j, '&')) => {
+                            ret = Some(Ok((i, Tok::Operator("<&"), *j)));
+                            self.chars.next();
+                        }
+                        Some((j, '<')) => {
+                            let j = *j;
+                            self.chars.next();
+                            if let Some((k, '-')) = self.chars.peek() {
+                                ret = Some(Ok((i, Tok::Operator("<<-"), *k)));
+                            } else {
+                                ret = Some(Ok((i, Tok::Operator("<<"), j)));
+                            }
+                        }
+                        _ => ret = Some(Ok((i, Tok::Operator("<"), i + 1))),
+                    };
+                    return ret;
+                }
                 Some((i, '"')) => {
                     return self.seek_until('"', i);
                 }
@@ -96,11 +152,16 @@ impl<'input> Iterator for Lexer<'input> {
                 Some((i, _)) => loop {
                     match self.chars.peek() {
                         Some((j, ';')) | Some((j, '|')) | Some((j, '&')) | Some((j, '$'))
-                        | Some((j, '"')) | Some((j, '\'')) | Some((j, '`')) | Some((j, ' ')) => {
-                            return Some(Ok((i, Tok::BareWord(&self.input[i..*j]), *j)))
+                        | Some((j, '"')) | Some((j, '\'')) | Some((j, '`')) | Some((j, ' '))
+                        | Some((j, '<')) | Some((j, '>')) => {
+                            return Some(Ok((i, Tok::BareWord(&self.input[i..*j]), *j)));
                         }
                         None => {
-                            return Some(Ok((i, Tok::BareWord(&self.input[i..]), self.input.len())))
+                            return Some(Ok((
+                                i,
+                                Tok::BareWord(&self.input[i..]),
+                                self.input.len(),
+                            )));
                         }
                         _ => {
                             self.chars.next();
