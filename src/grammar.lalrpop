@@ -9,7 +9,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::ast::{Program, CompleteCommands, CompleteCommand, AndOr, AndOrOp, Pipeline, Command, Arg, TermOp};
-use crate::lexer::{LexError, Tok, TokType};
+use crate::lexer::*;
 
 grammar<'input>(input: &'input str);
 
