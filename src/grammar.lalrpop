@@ -127,7 +127,7 @@ extern {
         LESSGRAND => Tok { tok_type: TokType::Operator, input: "<>"},
         DLESSDASH => Tok { tok_type: TokType::Operator, input: "<<-"},
         CLOBBER => Tok { tok_type: TokType::Operator, input: ">|"},
-        NEWLINE => Tok { tok_type: TokType::Newline, input: ""},
+        NEWLINE => Tok { tok_type: TokType::Word, input: "\n"},
         ASSIGNMENT_WORD => Tok { tok_type: TokType::AssignmentWord, input: <&'input str>},
         ARG_WORD => Tok { tok_type: TokType::Word, input: <&'input str>},
     }

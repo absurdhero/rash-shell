@@ -6,7 +6,6 @@ pub enum TokType {
     AssignmentWord,
     Word,
     Operator,
-    Newline,
     EOF,
 }
 
