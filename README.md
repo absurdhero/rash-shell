@@ -67,14 +67,15 @@ Features:
 - [x] environment manipulation (export, unset, readonly, variable prefixes)
 - [x] cd
 - [x] saving the exit status (`$?`)
+- [X] quoting: double quotes, single quotes, backslash escaping
 - [ ] subshells
-- [ ] interpolating $() and backticks
-- [ ] eval quotes, single quotes
+- [ ] parameter expansion (e.g. ${}, $() and backticks)
 - [ ] I/O Redirection
 - [ ] job control
 - [ ] shell startup arguments (e.g. `-c`, `-l`)
 - [ ] `set` command
 - [ ] control flow operators (`if`, `while`, `case`)
+- [ ] functions
 
 Interactive Mode:
 
@@ -82,6 +83,7 @@ Interactive Mode:
 - [x] keybindings (not yet configurable)
 - [ ] configurable settings
 - [ ] tab completion
+- [ ] configurable prompts
 
 Quality Improvements:
 

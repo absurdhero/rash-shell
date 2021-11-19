@@ -21,6 +21,7 @@ pub mod context;
 pub mod environment;
 pub mod eval;
 pub mod exec;
+pub mod lexer;
 
 lalrpop_mod!(#[allow(clippy::all)] pub grammar);
 
@@ -80,32 +81,37 @@ fn run_command(
     eval: &mut eval::Eval,
     input: &str,
 ) -> bool {
-    match parser.parse(input) {
+    let lexer = lexer::Lexer::new(input);
+    match parser.parse(input, lexer) {
         Ok(program) => {
             if eval.context.interactive {
                 rl.add_history_entry(input);
             }
+            //eprintln!("{:?}", program); // TODO: Use a real logger
             eval.eval(&program);
             true
         }
-        Err(e) => {
-            if let lalrpop_util::ParseError::UnrecognizedToken {
+        Err(e) => match e {
+            lalrpop_util::ParseError::UnrecognizedToken {
                 token: _,
                 expected: _,
-            } = e
-            {
-                false
-            } else if let lalrpop_util::ParseError::UnrecognizedEOF {
-                location: _,
-                expected: _,
-            } = e
-            {
-                false
-            } else {
+            } => {
                 eprintln!("rash: {}", e);
                 eval.context.last_return = 2;
                 true
             }
-        }
+            lalrpop_util::ParseError::UnrecognizedEOF {
+                location: _,
+                expected: _,
+            }
+            | lalrpop_util::ParseError::User {
+                error: lexer::LexError::UnexpectedEOF(_),
+            } => false,
+            _ => {
+                eprintln!("rash: {}", e);
+                eval.context.last_return = 2;
+                true
+            }
+        },
     }
 }

@@ -70,14 +70,11 @@ impl Eval {
             match command {
                 ast::Command::Simple { assign, cmd, args } => {
                     let parsed_cmd = match cmd {
-                        ast::Arg::Arg(s) => self.eval_arg(*s),
-                        // TODO: Evaluate the backquoted args as an andor_list and substitute stdout
-                        ast::Arg::Backquote(_quoted_args) => CString::new("").unwrap(),
+                        ast::Arg::Arg(s) => self.expand_arg(*s),
                     };
                     let mut parsed_args: Vec<CString> = vec![parsed_cmd.clone()];
                     parsed_args.extend(args.iter().map(|a| match a {
-                        ast::Arg::Arg(s) => self.eval_arg(*s),
-                        ast::Arg::Backquote(_quoted_args) => CString::new("").unwrap(),
+                        ast::Arg::Arg(s) => self.expand_arg(*s),
                     }));
                     let parsed_env: Vec<CString> =
                         assign.iter().map(|a| CString::new(*a).unwrap()).collect();
@@ -151,19 +148,72 @@ impl Eval {
         }
     }
 
-    fn eval_arg(&self, arg: &str) -> CString {
-        if arg.as_bytes()[0] == b'$' {
-            let key: &str = &arg[1..];
-            match key {
-                "?" => CString::new(format!("{}", self.context.last_return)),
-                _ => match self.context.env.get(key) {
-                    Some(v) => CString::new(v),
-                    None => CString::new(""),
-                },
+    fn expand_arg(&self, arg: &str) -> CString {
+        let mut chars = arg.char_indices().peekable();
+        let mut expanded = String::new();
+        let mut quoted: Option<char> = None;
+        let mut escaped = false;
+
+        loop {
+            match chars.next() {
+                Some((_, c)) => {
+                    if quoted.is_none() && !escaped {
+                        if c == '"' || c == '\'' {
+                            quoted = Some(c);
+                            continue;
+                        } else if c == '\\' {
+                            escaped = true;
+                            continue;
+                        }
+
+                        if c == '`' {
+                            quoted = Some(c);
+                            continue;
+                        }
+
+                        expanded.push(c);
+                    } else if escaped {
+                        // immediately end escaping
+                        escaped = false;
+                        // handle escaped newline by "removing" the newline
+                        if c == '\n' {
+                            continue;
+                        }
+                        expanded.push(c);
+                        continue;
+                    } else if quoted == Some('\'') {
+                        if c == '\'' {
+                            quoted = None;
+                            continue;
+                        } else {
+                            expanded.push(c);
+                            continue;
+                        }
+                    } else if quoted == Some('`') {
+                        if c == '`' {
+                            quoted = None;
+                            continue;
+                        } else {
+                            expanded.push(c);
+                            continue;
+                        }
+                    } else if quoted == Some('"') {
+                        if c == '"' {
+                            quoted = None;
+                            continue;
+                        } else {
+                            if c == '\\' {
+                                escaped = true;
+                                continue;
+                            }
+                            expanded.push(c);
+                            continue;
+                        }
+                    }
+                }
+                None => break,
             }
-        } else {
-            CString::new(arg)
         }
-        .unwrap()
+        return CString::new(expanded).unwrap();
     }
 }
