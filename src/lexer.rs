@@ -71,15 +71,15 @@ impl<'input> Lexer<'input> {
     }
 
     fn is_operator_start(c: char) -> bool {
-        return c == ';' || c == '|' || c == '&' || c == '<' || c == '>';
+        c == ';' || c == '|' || c == '&' || c == '<' || c == '>'
     }
 
     fn is_operator(s: &str) -> bool {
-        if s.len() == 1 && Lexer::is_operator_start(s.chars().nth(0).unwrap()) {
+        if s.len() == 1 && Lexer::is_operator_start(s.chars().next().unwrap()) {
             return true;
         }
 
-        return s == "&&"
+        s == "&&"
             || s == "||"
             || s == ";;"
             || s == "<<"
@@ -88,7 +88,7 @@ impl<'input> Lexer<'input> {
             || s == ">&"
             || s == "<>"
             || s == "<<-"
-            || s == ">|";
+            || s == ">|"
     }
 
     fn delimit(&mut self, end: usize) -> Option<Spanned<Tok<'input>, usize, LexError<'input>>> {
@@ -127,15 +127,14 @@ impl<'input> Iterator for Lexer<'input> {
                         }
 
                         // unquoted spaces delimit the current token
-                        if c == ' ' || c == '\t' || c == '\t' {
+                        if c == ' ' || c == '\t' {
                             if let Some(s) = self.delimit(i) {
                                 self.cur_start = i + 1;
                                 return Some(s);
-                            } else {
-                                // if there was no token before the space, keep going.
-                                self.cur_start = i + 1; // skip whitespace
-                                continue;
                             }
+                            // if there was no token before the space, keep going.
+                            self.cur_start = i + 1; // skip whitespace
+                            continue;
                         }
 
                         if c == '"' || c == '\'' {
@@ -154,51 +153,42 @@ impl<'input> Iterator for Lexer<'input> {
                     } else if quoted == Some('\'') {
                         if c == '\'' {
                             quoted = None;
-                            continue;
-                        } else {
-                            continue;
                         }
+                        continue;
                     } else if quoted == Some('`') {
                         if c == '`' {
                             quoted = None;
-                            continue;
-                        } else {
-                            continue;
                         }
+                        continue;
                     } else if quoted == Some('"') {
                         if c == '"' {
                             quoted = None;
-                            continue;
-                        } else {
-                            if c == '\\' {
-                                slash_escaped = true;
-                            }
-                            continue;
+                        } else if c == '\\' {
+                            slash_escaped = true;
                         }
+                        continue;
                     }
 
                     if Lexer::is_operator_start(c) {
                         if let Some(s) = self.delimit(i) {
                             self.cur_type = TokType::Operator;
                             return Some(s);
-                        } else {
-                            // if there was no token before the operator, keep going.
-                            self.cur_type = TokType::Operator;
-                            self.cur_start = i;
-                            continue;
                         }
+                        // if there was no token before the operator, keep going.
+                        self.cur_type = TokType::Operator;
+                        self.cur_start = i;
+                        continue;
                     }
 
                     // anything else is part of a word, keep reading the token.
                     self.cur_type = TokType::Word;
-                    continue;
                 }
                 None => {
                     return if self.cur_type == TokType::EOF {
                         None // EOF
                     } else {
-                        if quoted.is_some() {
-                            return Some(Err(LexError::UnexpectedEOF(quoted.unwrap())));
+                        if let Some(q) = quoted {
+                            return Some(Err(LexError::UnexpectedEOF(q)));
                         }
                         return self.delimit(self.input.len());
                     };

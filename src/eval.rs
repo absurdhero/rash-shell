@@ -147,71 +147,57 @@ impl Eval {
     }
 
     fn expand_arg(&self, arg: &str) -> String {
-        let mut chars = arg.char_indices().peekable();
+        let chars = arg.char_indices().peekable();
         let mut expanded = String::new();
         let mut quoted: Option<char> = None;
         let mut escaped = false;
 
-        loop {
-            match chars.next() {
-                Some((_, c)) => {
-                    if quoted.is_none() && !escaped {
-                        if c == '"' || c == '\'' {
-                            quoted = Some(c);
-                            continue;
-                        } else if c == '\\' {
-                            escaped = true;
-                            continue;
-                        }
-
-                        if c == '`' {
-                            quoted = Some(c);
-                            continue;
-                        }
-
-                        expanded.push(c);
-                    } else if escaped {
-                        // immediately end escaping
-                        escaped = false;
-                        // handle escaped newline by "removing" the newline
-                        if c == '\n' {
-                            continue;
-                        }
-                        expanded.push(c);
-                        continue;
-                    } else if quoted == Some('\'') {
-                        if c == '\'' {
-                            quoted = None;
-                            continue;
-                        } else {
-                            expanded.push(c);
-                            continue;
-                        }
-                    } else if quoted == Some('`') {
-                        if c == '`' {
-                            quoted = None;
-                            continue;
-                        } else {
-                            expanded.push(c);
-                            continue;
-                        }
-                    } else if quoted == Some('"') {
-                        if c == '"' {
-                            quoted = None;
-                            continue;
-                        } else {
-                            if c == '\\' {
-                                escaped = true;
-                                continue;
-                            }
-                            expanded.push(c);
-                            continue;
-                        }
-                    }
+        for (_, c) in chars {
+            if quoted.is_none() && !escaped {
+                if c == '"' || c == '\'' {
+                    quoted = Some(c);
+                    continue;
+                } else if c == '\\' {
+                    escaped = true;
+                    continue;
                 }
-                None => break,
+
+                if c == '`' {
+                    quoted = Some(c);
+                    continue;
+                }
+
+                expanded.push(c);
+            } else if escaped {
+                // immediately end escaping
+                escaped = false;
+                // handle escaped newline by "removing" the newline
+                if c == '\n' {
+                    continue;
+                }
+                expanded.push(c);
+            } else if quoted == Some('\'') {
+                if c == '\'' {
+                    quoted = None;
+                } else {
+                    expanded.push(c);
+                }
+            } else if quoted == Some('`') {
+                if c == '`' {
+                    quoted = None;
+                } else {
+                    expanded.push(c);
+                }
+            } else if quoted == Some('"') {
+                if c == '"' {
+                    quoted = None;
+                } else if c == '\\' {
+                    escaped = true;
+                } else {
+                    expanded.push(c);
+                }
             }
         }
-        return expanded;
+        expanded
     }
 }

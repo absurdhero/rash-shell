@@ -109,7 +109,7 @@ fn export(args: &[String], context: &mut Context, stdio: StdIo) -> i32 {
             context.env.export(&key);
             context.env.set_vareq_with_key(key, arg.clone());
         } else {
-            context.env.export(&arg)
+            context.env.export(arg)
         }
     }
 
@@ -138,7 +138,7 @@ fn readonly(args: &[String], context: &mut Context, stdio: StdIo) -> i32 {
             context.env.readonly(&key);
             context.env.set_vareq_with_key(key, arg.clone());
         } else {
-            context.env.readonly(&arg)
+            context.env.readonly(arg)
         }
     }
 
@@ -147,7 +147,7 @@ fn readonly(args: &[String], context: &mut Context, stdio: StdIo) -> i32 {
 
 fn unset(args: &[String], context: &mut Context, _stdio: StdIo) -> i32 {
     for arg in &args[1..] {
-        context.env.unset(&arg)
+        context.env.unset(arg)
     }
 
     0
