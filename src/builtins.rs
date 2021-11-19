@@ -10,7 +10,6 @@
 
 use std::collections::HashMap;
 use std::env;
-use std::ffi::CString;
 use std::path::Path;
 
 use nix::errno::Errno;
@@ -18,11 +17,11 @@ use nix::errno::Errno;
 use crate::context::Context;
 use crate::context::StdIo;
 
-pub type Command = fn(&[CString], &mut Context, StdIo) -> i32;
+pub type Command = fn(&[String], &mut Context, StdIo) -> i32;
 
 #[derive(Default)]
 pub struct Builtins {
-    commands: HashMap<CString, Command>,
+    commands: HashMap<String, Command>,
 }
 
 impl Builtins {
@@ -36,22 +35,22 @@ impl Builtins {
     }
 
     fn insert(&mut self, key: &str, val: Command) {
-        self.commands.insert(CString::new(key).unwrap(), val);
+        self.commands.insert(key.to_string(), val);
     }
 
-    pub fn get(&self, key: &CString) -> Option<&Command> {
+    pub fn get(&self, key: &str) -> Option<&Command> {
         self.commands.get(key)
     }
 }
 
-fn cd(args: &[CString], context: &mut Context, stdio: StdIo) -> i32 {
+fn cd(args: &[String], context: &mut Context, stdio: StdIo) -> i32 {
     if args.len() > 2 {
         stdio.eprintln(format_args!("rash: too many arguments"));
         return 1;
     }
 
     let dir = if args.len() == 1 {
-        context.env.get("HOME").unwrap_or_else(|| String::from("/"))
+        context.env.get("HOME").unwrap_or_else(|| "/".to_string())
     } else if args[1].as_bytes() == [b'-'] {
         if let Some(v) = context.env.get("OLDPWD") {
             stdio.println(format_args!("{}", v));
@@ -88,15 +87,15 @@ fn cd(args: &[CString], context: &mut Context, stdio: StdIo) -> i32 {
     }
 }
 
-fn export(args: &[CString], context: &mut Context, stdio: StdIo) -> i32 {
-    if args.len() == 1 || args[1] == CString::new("-p").unwrap() {
+fn export(args: &[String], context: &mut Context, stdio: StdIo) -> i32 {
+    if args.len() == 1 || args[1] == "-p" {
         context
             .env
             .iter()
             .filter(|(_, v)| v.export)
             .for_each(|(k, v)| {
                 if let Some(veq) = &v.var_eq {
-                    stdio.println(format_args!("export {}", veq.to_string_lossy()));
+                    stdio.println(format_args!("export {}", veq));
                 } else {
                     stdio.println(format_args!("export {}", k));
                 }
@@ -105,28 +104,27 @@ fn export(args: &[CString], context: &mut Context, stdio: StdIo) -> i32 {
     }
 
     for arg in &args[1..] {
-        let arg_str = arg.to_string_lossy().to_string();
-        if arg_str.contains('=') {
+        if arg.contains('=') {
             let key = context.env.parse_key(arg);
             context.env.export(&key);
             context.env.set_vareq_with_key(key, arg.clone());
         } else {
-            context.env.export(&arg_str)
+            context.env.export(&arg)
         }
     }
 
     0
 }
 
-fn readonly(args: &[CString], context: &mut Context, stdio: StdIo) -> i32 {
-    if args.len() == 1 || args[1] == CString::new("-p").unwrap() {
+fn readonly(args: &[String], context: &mut Context, stdio: StdIo) -> i32 {
+    if args.len() == 1 || args[1] == "-p" {
         context
             .env
             .iter()
             .filter(|(_, v)| v.readonly)
             .for_each(|(k, v)| {
                 if let Some(veq) = &v.var_eq {
-                    stdio.println(format_args!("readonly {}", veq.to_string_lossy()));
+                    stdio.println(format_args!("readonly {}", veq));
                 } else {
                     stdio.println(format_args!("readonly {}", k));
                 }
@@ -135,23 +133,21 @@ fn readonly(args: &[CString], context: &mut Context, stdio: StdIo) -> i32 {
     }
 
     for arg in &args[1..] {
-        let arg_str = arg.to_string_lossy().to_string();
-        if arg_str.contains('=') {
+        if arg.contains('=') {
             let key = context.env.parse_key(arg);
             context.env.readonly(&key);
             context.env.set_vareq_with_key(key, arg.clone());
         } else {
-            context.env.readonly(&arg_str)
+            context.env.readonly(&arg)
         }
     }
 
     0
 }
 
-fn unset(args: &[CString], context: &mut Context, _stdio: StdIo) -> i32 {
+fn unset(args: &[String], context: &mut Context, _stdio: StdIo) -> i32 {
     for arg in &args[1..] {
-        let arg_str = arg.to_string_lossy().to_string();
-        context.env.unset(&arg_str)
+        context.env.unset(&arg)
     }
 
     0

@@ -11,11 +11,10 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::env;
-use std::ffi::CString;
 
 #[derive(Debug, Clone, Default)]
 pub struct Val {
-    pub var_eq: Option<CString>,
+    pub var_eq: Option<String>,
     pub export: bool,
     pub readonly: bool,
 }
@@ -27,19 +26,16 @@ pub struct Environment {
 
 impl Environment {
     pub fn set_var(&mut self, key: &str, val: String) {
-        self.set_vareq_with_key(
-            key.to_string(),
-            CString::new(format!("{}={}", key, val)).unwrap(),
-        );
+        self.set_vareq_with_key(key.to_string(), format!("{}={}", key, val));
     }
 
     /// sets a variable of the form "KEY=VALUE"
-    pub fn set_vareq(&mut self, var_eq: CString) {
+    pub fn set_vareq(&mut self, var_eq: String) {
         let key: String = self.parse_key(&var_eq);
         self.set_vareq_with_key(key, var_eq);
     }
 
-    pub fn set_vareq_with_key(&mut self, key: String, var_eq: CString) {
+    pub fn set_vareq_with_key(&mut self, key: String, var_eq: String) {
         match self.vars.entry(key) {
             Entry::Occupied(mut o) => {
                 let v = o.get_mut();
@@ -100,7 +96,7 @@ impl Environment {
         };
     }
 
-    pub fn into_exported(self) -> Vec<CString> {
+    pub fn into_exported(self) -> Vec<String> {
         self.vars
             .into_iter()
             .filter(|(_, v)| v.export && v.var_eq.is_some())
@@ -112,7 +108,7 @@ impl Environment {
         self.vars.iter()
     }
 
-    pub fn parse_key(&self, var_eq: &CString) -> String {
+    pub fn parse_key(&self, var_eq: &str) -> String {
         let mut split = var_eq.as_bytes().split(|b| *b == b'=');
         String::from_utf8_lossy(split.next().unwrap()).to_string()
     }

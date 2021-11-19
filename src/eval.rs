@@ -8,7 +8,6 @@
 //
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use std::ffi::CString;
 use std::os::unix::io::RawFd;
 
 use nix::sys::wait;
@@ -72,12 +71,11 @@ impl Eval {
                     let parsed_cmd = match cmd {
                         ast::Arg::Arg(s) => self.expand_arg(*s),
                     };
-                    let mut parsed_args: Vec<CString> = vec![parsed_cmd.clone()];
+                    let mut parsed_args: Vec<String> = vec![parsed_cmd.clone()];
                     parsed_args.extend(args.iter().map(|a| match a {
                         ast::Arg::Arg(s) => self.expand_arg(*s),
                     }));
-                    let parsed_env: Vec<CString> =
-                        assign.iter().map(|a| CString::new(*a).unwrap()).collect();
+                    let parsed_env: Vec<String> = assign.iter().map(|a| a.to_string()).collect();
 
                     let cur_stdin: RawFd;
 
@@ -148,7 +146,7 @@ impl Eval {
         }
     }
 
-    fn expand_arg(&self, arg: &str) -> CString {
+    fn expand_arg(&self, arg: &str) -> String {
         let mut chars = arg.char_indices().peekable();
         let mut expanded = String::new();
         let mut quoted: Option<char> = None;
@@ -214,6 +212,6 @@ impl Eval {
                 None => break,
             }
         }
-        return CString::new(expanded).unwrap();
+        return expanded;
     }
 }

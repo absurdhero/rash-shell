@@ -24,9 +24,9 @@ static ENOENT: nix::Error = nix::Error::Sys(nix::errno::Errno::ENOENT);
 /// executes a command and returns the Pid if a child was forked or None if a built-in was called.
 pub fn run_command(
     context: &mut context::Context,
-    cmd: &CString,
-    args: &[CString],
-    env: &[CString],
+    cmd: &str,
+    args: &[String],
+    env: &[String],
     stdio: context::StdIo,
 ) -> Option<Pid> {
     let maybe_builtin;
@@ -77,9 +77,9 @@ pub fn run_command(
 /// search for the filename in the PATH and try to exec until one succeeds
 pub fn exec(
     context: &context::Context,
-    filename: &CString,
-    args: &[CString],
-    env: &[CString],
+    filename: &str,
+    args: &[String],
+    env: &[String],
 ) -> nix::Result<Infallible> {
     // add any prefixed variables to the environment
     let mut child_env = context.env.clone();
@@ -126,18 +126,25 @@ pub fn exec(
     Err(first_error)
 }
 
-fn try_exec(
-    filepath: &CString,
-    args: &[CString],
-    exported_env: &[CString],
-) -> nix::Result<Infallible> {
+fn try_exec(filepath: &str, args: &[String], exported_env: &[String]) -> nix::Result<Infallible> {
+    let arg_cstrings = args
+        .iter()
+        .map(|c| CString::new(c.as_str()).unwrap())
+        .collect::<Vec<_>>();
+
+    let exported_cstrings = exported_env
+        .iter()
+        .map(|c| CString::new(c.as_str()).unwrap())
+        .collect::<Vec<_>>();
+
     execve(
-        filepath,
-        args.iter()
+        CString::new(filepath).unwrap().as_c_str(),
+        arg_cstrings
+            .iter()
             .map(|c| c.as_c_str())
             .collect::<Vec<_>>()
             .as_slice(),
-        exported_env
+        exported_cstrings
             .iter()
             .map(|c| c.as_c_str())
             .collect::<Vec<_>>()
@@ -145,10 +152,8 @@ fn try_exec(
     )
 }
 
-fn filepath(path: PathBuf, filename: &CString) -> CString {
-    // If I understand what I just wrote, this creates two copies of the data.
-    // join makes a new OsString and String::from copies the data into a new String.
-    // I don't yet understand the best way to go from Path -> PathBuf -> &str
+fn filepath(path: PathBuf, filename: &str) -> String {
     let path_buf = path.join(OsStr::from_bytes(filename.as_bytes()));
-    CString::new(path_buf.into_os_string().to_str().unwrap()).unwrap()
+    // assumes the path is valid UTF-8
+    path_buf.into_os_string().into_string().unwrap()
 }
