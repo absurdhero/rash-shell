@@ -96,13 +96,17 @@ impl<'a> Pipeline<'a> {
 }
 
 #[derive(Debug, PartialEq)]
+pub struct SimpleCommand<'a> {
+    pub assign: Vec<&'a str>,
+    pub cmd: Arg<'a>,
+    pub args: Vec<Arg<'a>>,
+    //pub redirect: Vec<Redirect<'a>>,
+}
+
+#[derive(Debug, PartialEq)]
 pub enum Command<'a> {
-    Simple {
-        assign: Vec<&'a str>,
-        cmd: Arg<'a>,
-        args: Vec<Arg<'a>>,
-        //redirect: Vec<Redirect<'a>>,
-    },
+    Simple(SimpleCommand<'a>),
+    Compound,
 }
 
 #[derive(Debug, PartialEq)]
@@ -156,13 +160,21 @@ mod tests {
     }
 
     fn complete_command<'a>(program: &'a ast::Program) -> &'a Vec<(TermOp, AndOr<'a>)> {
-        return &program.commands.complete_commands.get(0).unwrap().and_ors;
+        return &program.commands.complete_commands[0].and_ors;
     }
 
-    fn single_command<'a>(program: &'a ast::Program) -> &'a Command<'a> {
-        return &program.commands.complete_commands[0].and_ors[0].1.pipelines[0]
-            .1
-            .commands[0];
+    fn single_command<'a>(program: &'a ast::Program, index: usize) -> &'a SimpleCommand<'a> {
+        let command = &complete_command(program)[index].1.pipelines[0].1.commands[0];
+        return match command {
+            Command::Simple(s) => s,
+            Command::Compound => {
+                panic!("unimplemented");
+            }
+        };
+    }
+
+    fn first_command<'a>(program: &'a ast::Program) -> &'a SimpleCommand<'a> {
+        return single_command(program, 0);
     }
 
     #[test]
@@ -175,9 +187,20 @@ mod tests {
     #[test]
     fn semicolon_delimiter() {
         // these should parse as two commands
-        assert_eq!(complete_command(&parse("echo foo; bar")).len(), 2);
-        assert_eq!(complete_command(&parse("echo foo;bar")).len(), 2);
-        assert_eq!(complete_command(&parse("echo $foo;bar")).len(), 2);
+        for input in ["echo foo; bar", "echo foo;bar", "echo foo ; bar"] {
+            let program = parse(input);
+            let command = complete_command(&program);
+            assert_eq!(command.len(), 2);
+            let SimpleCommand { assign, cmd, args } = first_command(&program);
+            assert_eq!(assign.len(), 0);
+            assert_eq!(cmd, &Arg::Arg("echo"));
+            assert_eq!(args[0], Arg::Arg("foo"));
+
+            let SimpleCommand { assign, cmd, args } = single_command(&program, 1);
+            assert_eq!(assign.len(), 0);
+            assert_eq!(cmd, &Arg::Arg("bar"));
+            assert_eq!(args.len(), 0);
+        }
 
         // these should parse as one command
         assert_eq!(complete_command(&parse("echo \"foo; bar\"")).len(), 1);
@@ -189,28 +212,28 @@ mod tests {
     fn simple_argument_parsing() {
         // argument parsing
         let program = parse("echo");
-        let Command::Simple {
+        let SimpleCommand {
             args,
             assign: _,
             cmd,
-        } = single_command(&program);
+        } = first_command(&program);
         assert_eq!(cmd, &Arg::Arg("echo"));
         assert_eq!(args.len(), 0);
 
         let program = parse("echo foo");
-        let Command::Simple {
+        let SimpleCommand {
             args,
             assign: _,
             cmd: _,
-        } = single_command(&program);
+        } = first_command(&program);
         assert_eq!(args.len(), 1);
 
         let program = parse("echo \"foo\"");
-        let Command::Simple {
+        let SimpleCommand {
             args,
             assign: _,
             cmd: _,
-        } = single_command(&program);
+        } = first_command(&program);
         assert_eq!(args.len(), 1);
 
         // Fails because the lexer delimits tokens on "
@@ -219,11 +242,11 @@ mod tests {
         // assert_eq!(args.len(), 1);
 
         let program = parse("echo \"foo\" bar");
-        let Command::Simple {
+        let SimpleCommand {
             args,
             assign: _,
             cmd: _,
-        } = single_command(&program);
+        } = first_command(&program);
         assert_eq!(args.len(), 2);
     }
 }

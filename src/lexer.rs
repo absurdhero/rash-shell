@@ -57,15 +57,20 @@ pub struct Lexer<'input> {
     input: &'input str,
     cur_type: TokType,
     cur_start: usize,
+    next: Option<(usize, char)>,
 }
 
 impl<'input> Lexer<'input> {
     pub fn new(input: &'input str) -> Self {
+        let mut chars = input.char_indices().peekable();
+        let next = chars.next();
+
         Lexer {
-            chars: input.char_indices().peekable(),
+            chars,
             input,
             cur_type: TokType::EOF,
             cur_start: 0,
+            next,
         }
     }
 
@@ -110,11 +115,19 @@ impl<'input> Iterator for Lexer<'input> {
     type Item = Spanned<Tok<'input>, usize, LexError<'input>>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        let mut continued = false;
         let mut quoted: Option<char> = None;
         let mut slash_escaped = false;
 
         loop {
-            match self.chars.next() {
+            // don't advance the character on the first iteration. We may still be scanning
+            // a character from the previous call to next() that wasn't consumed.
+            if continued {
+                self.next = self.chars.next();
+            }
+            continued = true;
+
+            match self.next {
                 Some((i, c)) => {
                     if quoted.is_none() && !slash_escaped {
                         if self.cur_type == TokType::Operator {

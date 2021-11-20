@@ -67,7 +67,7 @@ impl Eval {
             let command = &pipeline.commands[i];
             debug!("{:?}", command);
             match command {
-                ast::Command::Simple { assign, cmd, args } => {
+                ast::Command::Simple(ast::SimpleCommand { assign, cmd, args }) => {
                     let parsed_cmd = match cmd {
                         ast::Arg::Arg(s) => self.expand_arg(*s),
                     };
@@ -115,6 +115,9 @@ impl Eval {
                         // if the last element in a pipeline is a built-in, record the return value
                         final_return = Some(self.context.last_return);
                     }
+                }
+                ast::Command::Compound => {
+                    panic!("unimplemented");
                 }
             }
         }

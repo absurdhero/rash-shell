@@ -8,7 +8,7 @@
 //
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use crate::ast::{Program, CompleteCommands, CompleteCommand, AndOr, AndOrOp, Pipeline, Command, Arg, TermOp};
+use crate::ast::{Program, CompleteCommands, CompleteCommand, AndOr, AndOrOp, Pipeline, Command, SimpleCommand, Arg, TermOp};
 use crate::lexer::*;
 
 grammar<'input>(input: &'input str);
@@ -55,11 +55,11 @@ command: Command<'input> = {
 }
 
 simple_command: Command<'input> = {
-    <assign:cmd_prefix> <cmd:cmd_word> <args:cmd_suffix> => Command::Simple{ assign, cmd: Arg::Arg(cmd), args },
-    <assign:cmd_prefix> <cmd:cmd_word>                   => Command::Simple{ assign, cmd: Arg::Arg(cmd), args: vec![] },
-    <assign:cmd_prefix>                                  => Command::Simple{ assign, cmd: Arg::Arg(""), args: vec![] },
-    <cmd:cmd_name> <args:cmd_suffix>                     => Command::Simple{ assign: vec![], cmd: Arg::Arg(cmd), args },
-    cmd_name                                             => Command::Simple{ assign: vec![], cmd: Arg::Arg(<>), args: vec![] },
+    <assign:cmd_prefix> <cmd:cmd_word> <args:cmd_suffix> => Command::Simple(SimpleCommand{ assign, cmd: Arg::Arg(cmd), args }),
+    <assign:cmd_prefix> <cmd:cmd_word>                   => Command::Simple(SimpleCommand{ assign, cmd: Arg::Arg(cmd), args: vec![] }),
+    <assign:cmd_prefix>                                  => Command::Simple(SimpleCommand{ assign, cmd: Arg::Arg(""), args: vec![] }),
+    <cmd:cmd_name> <args:cmd_suffix>                     => Command::Simple(SimpleCommand{ assign: vec![], cmd: Arg::Arg(cmd), args }),
+    cmd_name                                             => Command::Simple(SimpleCommand{ assign: vec![], cmd: Arg::Arg(<>), args: vec![] }),
 };
 
 cmd_name = { cmd_word }
