@@ -227,7 +227,9 @@ mod tests {
             cmd: _,
         } = first_command(&program);
         assert_eq!(args.len(), 1);
+        assert_eq!(args[0], Arg::Arg("foo"));
 
+        // quoting is preserved in the AST
         let program = parse("echo \"foo\"");
         let SimpleCommand {
             args,
@@ -235,11 +237,26 @@ mod tests {
             cmd: _,
         } = first_command(&program);
         assert_eq!(args.len(), 1);
+        assert_eq!(args[0], Arg::Arg("\"foo\""));
 
-        // Fails because the lexer delimits tokens on "
-        // let program = parse("echo \"foo\"bar");
-        // let Command::Simple { args, assign: _, cmd: _ } = single_command(&program);
-        // assert_eq!(args.len(), 1);
+        let program = parse("echo 'foo'");
+        let SimpleCommand {
+            args,
+            assign: _,
+            cmd: _,
+        } = first_command(&program);
+        assert_eq!(args.len(), 1);
+        assert_eq!(args[0], Arg::Arg("'foo'"));
+
+        // "foo"bar is a single argument
+        let program = parse("echo \"foo\"bar");
+        let SimpleCommand {
+            args,
+            assign: _,
+            cmd: _,
+        } = first_command(&program);
+        assert_eq!(args.len(), 1);
+        assert_eq!(args[0], Arg::Arg("\"foo\"bar"));
 
         let program = parse("echo \"foo\" bar");
         let SimpleCommand {
@@ -248,5 +265,7 @@ mod tests {
             cmd: _,
         } = first_command(&program);
         assert_eq!(args.len(), 2);
+        assert_eq!(args[0], Arg::Arg("\"foo\""));
+        assert_eq!(args[1], Arg::Arg("bar"));
     }
 }
