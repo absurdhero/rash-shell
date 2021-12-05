@@ -84,11 +84,11 @@ pub fn exec(
     // add any prefixed variables to the environment
     let mut child_env = context.env.clone();
     for v in env.iter() {
-        child_env.set_vareq(v.to_owned());
+        child_env.set_vareq(v);
     }
 
-    let path = child_env.get("PATH");
-    let exported = child_env.into_exported();
+    let path = child_env.get("PATH").unwrap_or("/bin:/usr/bin");
+    let exported = child_env.exports();
 
     // if the filename has any slashes in it, don't search the PATH
     if filename.as_bytes().iter().any(|c| *c == b'/') {
@@ -101,24 +101,10 @@ pub fn exec(
 
     let mut first_error: nix::Error = ENOENT;
 
-    match path {
-        Some(paths) => {
-            for path in env::split_paths(&paths) {
-                if let Err(e) = try_exec(&filepath(path, filename), args, &exported) {
-                    if first_error == ENOENT {
-                        first_error = e;
-                    }
-                }
-            }
-        }
-        None => {
-            for path in &["/bin", "/usr/bin"] {
-                let path_buf = PathBuf::from(path);
-                if let Err(e) = try_exec(&filepath(path_buf, filename), args, &exported) {
-                    if first_error == ENOENT {
-                        first_error = e;
-                    }
-                }
+    for path in env::split_paths(path) {
+        if let Err(e) = try_exec(&filepath(path, filename), args, &exported) {
+            if first_error == ENOENT {
+                first_error = e;
             }
         }
     }

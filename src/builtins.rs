@@ -50,7 +50,7 @@ fn cd(args: &[String], context: &mut Context, stdio: StdIo) -> i32 {
     }
 
     let dir = if args.len() == 1 {
-        context.env.get("HOME").unwrap_or_else(|| "/".to_string())
+        context.env.get("HOME").unwrap_or("/")
     } else if args[1].as_bytes() == [b'-'] {
         if let Some(v) = context.env.get("OLDPWD") {
             stdio.println(format_args!("{}", v));
@@ -60,7 +60,7 @@ fn cd(args: &[String], context: &mut Context, stdio: StdIo) -> i32 {
             return 1;
         }
     } else {
-        String::from_utf8(args[1].as_bytes().to_vec()).unwrap()
+        &args[1]
     };
 
     let path = Path::new(&dir);
@@ -71,7 +71,7 @@ fn cd(args: &[String], context: &mut Context, stdio: StdIo) -> i32 {
             if let Ok(oldpwd) = old {
                 context
                     .env
-                    .set_var("OLDPWD", oldpwd.to_string_lossy().to_string());
+                    .set_var("OLDPWD", oldpwd.to_string_lossy().to_string(), None);
             }
 
             0
@@ -94,8 +94,8 @@ fn export(args: &[String], context: &mut Context, stdio: StdIo) -> i32 {
             .iter()
             .filter(|(_, v)| v.export)
             .for_each(|(k, v)| {
-                if let Some(veq) = &v.var_eq {
-                    stdio.println(format_args!("export {}", veq));
+                if let Some(val) = &v.value {
+                    stdio.println(format_args!("export {}={}", k, val));
                 } else {
                     stdio.println(format_args!("export {}", k));
                 }
@@ -104,12 +104,10 @@ fn export(args: &[String], context: &mut Context, stdio: StdIo) -> i32 {
     }
 
     for arg in &args[1..] {
-        if arg.contains('=') {
-            let key = context.env.parse_key(arg);
-            context.env.export(&key);
-            context.env.set_vareq_with_key(key, arg.clone());
+        if let Some((key, value)) = context.env.parse(arg) {
+            context.env.set_var(key, value.into(), Some(true));
         } else {
-            context.env.export(arg)
+            context.env.export(arg);
         }
     }
 
@@ -123,8 +121,8 @@ fn readonly(args: &[String], context: &mut Context, stdio: StdIo) -> i32 {
             .iter()
             .filter(|(_, v)| v.readonly)
             .for_each(|(k, v)| {
-                if let Some(veq) = &v.var_eq {
-                    stdio.println(format_args!("readonly {}", veq));
+                if let Some(val) = &v.value {
+                    stdio.println(format_args!("readonly {}={}", k, val));
                 } else {
                     stdio.println(format_args!("readonly {}", k));
                 }
@@ -133,12 +131,11 @@ fn readonly(args: &[String], context: &mut Context, stdio: StdIo) -> i32 {
     }
 
     for arg in &args[1..] {
-        if arg.contains('=') {
-            let key = context.env.parse_key(arg);
-            context.env.readonly(&key);
-            context.env.set_vareq_with_key(key, arg.clone());
+        if let Some((key, value)) = context.env.parse(arg) {
+            context.env.set_var(key, value.into(), None);
+            context.env.readonly(key);
         } else {
-            context.env.readonly(arg)
+            context.env.readonly(arg);
         }
     }
 

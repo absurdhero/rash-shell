@@ -87,7 +87,7 @@ fn run_command(
             if eval.context.interactive {
                 rl.add_history_entry(input);
             }
-            //eprintln!("{:?}", program); // TODO: Use a real logger
+            trace!("{:?}", program);
             eval.eval(&program);
             true
         }

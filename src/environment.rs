@@ -14,7 +14,7 @@ use std::env;
 
 #[derive(Debug, Clone, Default)]
 pub struct Val {
-    pub var_eq: Option<String>,
+    pub value: Option<String>,
     pub export: bool,
     pub readonly: bool,
 }
@@ -25,31 +25,30 @@ pub struct Environment {
 }
 
 impl Environment {
-    pub fn set_var(&mut self, key: &str, val: String) {
-        self.set_vareq_with_key(key.to_string(), format!("{}={}", key, val));
-    }
-
-    /// sets a variable of the form "KEY=VALUE"
-    pub fn set_vareq(&mut self, var_eq: String) {
-        let key: String = self.parse_key(&var_eq);
-        self.set_vareq_with_key(key, var_eq);
-    }
-
-    pub fn set_vareq_with_key(&mut self, key: String, var_eq: String) {
-        match self.vars.entry(key) {
+    pub fn set_var(&mut self, key: &str, val: String, export: Option<bool>) {
+        match self.vars.entry(key.into()) {
             Entry::Occupied(mut o) => {
                 let v = o.get_mut();
                 // TODO: return an error if readonly
                 if !v.readonly {
-                    v.var_eq = Some(var_eq);
+                    v.value = Some(val);
+                    v.export = export.unwrap_or(false);
                 }
             }
             Entry::Vacant(o) => {
                 o.insert(Val {
-                    var_eq: Some(var_eq),
+                    value: Some(val),
+                    export: export.unwrap_or(false),
                     ..Default::default()
                 });
             }
+        }
+    }
+
+    /// sets a variable of the form "KEY=VALUE"
+    pub fn set_vareq(&mut self, var_eq: &str) {
+        if let Some((key, value)) = self.parse(var_eq) {
+            self.set_var(key, value.into(), None)
         }
     }
 
@@ -80,27 +79,16 @@ impl Environment {
             .readonly = true;
     }
 
-    pub fn get(&self, key: &str) -> Option<String> {
-        let entry = self.vars.get(key)?;
-
-        return if let Some(var_eq) = &entry.var_eq {
-            let mut split = var_eq.as_bytes().split(|b| *b == b'=');
-            let _entry_key = split.next().unwrap();
-            if let Some(value) = split.next() {
-                Some(String::from_utf8_lossy(value).to_string())
-            } else {
-                Some(String::new())
-            }
-        } else {
-            None
-        };
+    pub fn get(&self, key: &str) -> Option<&str> {
+        let val = self.vars.get(key)?;
+        val.value.as_deref()
     }
 
-    pub fn into_exported(self) -> Vec<String> {
+    pub fn exports(&self) -> Vec<String> {
         self.vars
-            .into_iter()
-            .filter(|(_, v)| v.export && v.var_eq.is_some())
-            .map(|(_, v)| v.var_eq.unwrap())
+            .iter()
+            .filter(|(_, v)| v.export && v.value.is_some())
+            .map(|(k, v)| format!("{}={}", k, v.value.as_ref().unwrap()))
             .collect()
     }
 
@@ -108,9 +96,19 @@ impl Environment {
         self.vars.iter()
     }
 
-    pub fn parse_key(&self, var_eq: &str) -> String {
-        let mut split = var_eq.as_bytes().split(|b| *b == b'=');
-        String::from_utf8_lossy(split.next().unwrap()).to_string()
+    pub fn parse<'a>(&self, var_eq: &'a str) -> Option<(&'a str, &'a str)> {
+        if var_eq.len() < 2 {
+            return None;
+        }
+        // variable names can start with '=' according to glibc and rust's environment parsing
+        // but POSIX doesn't allow it. We'll err on the side of being more accepting for now.
+        for (i, c) in var_eq[1..].char_indices() {
+            if c == '=' {
+                let i = i + 1; // compensate for scanning from the 2nd position
+                return Some((&var_eq[..i], &var_eq[i + 1..]));
+            }
+        }
+        None
     }
 }
 
@@ -123,8 +121,7 @@ pub fn empty() -> Environment {
 pub fn from_system() -> Environment {
     let mut e = empty();
     env::vars().for_each(|(k, v)| {
-        e.set_var(&k, v);
-        e.export(&k);
+        e.set_var(&k, v, Some(true));
     });
     e
 }
