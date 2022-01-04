@@ -8,7 +8,9 @@
 //
 // http://www.apache.org/licenses/LICENSE-2.0
 
+use std::iter::Peekable;
 use std::os::unix::io::RawFd;
+use std::str::Chars;
 
 use nix::sys::wait;
 use nix::unistd::*;
@@ -150,12 +152,14 @@ impl Eval {
     }
 
     fn expand_arg(&self, arg: &str) -> String {
-        let chars = arg.char_indices().peekable();
+        let mut chars = arg.chars().peekable();
         let mut expanded = String::new();
         let mut quoted: Option<char> = None;
         let mut escaped = false;
 
-        for (_, c) in chars {
+        while chars.peek().is_some() {
+            let c = chars.next().unwrap();
+
             if quoted.is_none() && !escaped {
                 if c == '"' || c == '\'' {
                     quoted = Some(c);
@@ -163,10 +167,11 @@ impl Eval {
                 } else if c == '\\' {
                     escaped = true;
                     continue;
-                }
-
-                if c == '`' {
+                } else if c == '`' {
                     quoted = Some(c);
+                    continue;
+                } else if c == '$' {
+                    self.expand_var(&mut chars, &mut expanded);
                     continue;
                 }
 
@@ -196,11 +201,60 @@ impl Eval {
                     quoted = None;
                 } else if c == '\\' {
                     escaped = true;
+                } else if c == '$' {
+                    self.expand_var(&mut chars, &mut expanded);
                 } else {
                     expanded.push(c);
                 }
             }
         }
         expanded
+    }
+
+    /// Expand $name, and ${param}, and ${param-default} forms.
+    /// This is a small subset of the spec found at:
+    ///  POSIX 2.6.2 Parameter Expansion
+    fn expand_var(&self, chars: &mut Peekable<Chars>, expanded: &mut String) {
+        let mut param = String::new();
+        let mut default_val = String::new();
+
+        let delimited = if chars.peek() == Some(&'{') {
+            chars.next();
+            true
+        } else {
+            false
+        };
+
+        if chars.peek() == Some(&'?') {
+            chars.next();
+            let return_val = format!("{}", self.context.last_return);
+            expanded.push_str(&return_val);
+            return;
+        }
+
+        while chars.peek().is_some() {
+            let c = chars.next().unwrap();
+            if delimited {
+                if c == '}' {
+                    break;
+                }
+                if c == '-' {
+                    while chars.peek().is_some() {
+                        let c = chars.next().unwrap();
+                        if c == '}' {
+                            break;
+                        }
+                        default_val.push(c);
+                    }
+                    break;
+                }
+                param.push(c);
+            } else if c.is_alphanumeric() || c == '_' {
+                param.push(c);
+            } else {
+                break;
+            }
+        }
+        expanded.extend(self.context.env.get(&param).or(Some(&default_val)));
     }
 }
