@@ -141,7 +141,6 @@ pub enum TermOp {
 #[cfg(test)]
 #[allow(unused_imports)]
 mod tests {
-    use lalrpop_util::lexer::Token;
     use lalrpop_util::ParseError;
 
     use crate::lexer::{LexError, Tok};
