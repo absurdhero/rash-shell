@@ -11,7 +11,7 @@ readme = "README.md"
 repository = "https://github.com/absurdhero/rash-shell"
 
 [build-dependencies]
-lalrpop = { version = "0.19.6", features = ["lexer"] }
+lalrpop = "0.19.6"
 
 [dependencies]
 log = "0.4.14"
