@@ -19,8 +19,6 @@ use nix::unistd::*;
 
 use crate::context;
 
-static ENOENT: nix::Error = nix::Error::Sys(nix::errno::Errno::ENOENT);
-
 /// executes a command and returns the Pid if a child was forked or None if a built-in was called.
 pub fn run_command(
     context: &mut context::Context,
@@ -99,11 +97,11 @@ pub fn exec(
     // from the first attempt.
     // if no matches are found, return ENOENT.
 
-    let mut first_error: nix::Error = ENOENT;
+    let mut first_error: nix::Error = nix::Error::ENOENT;
 
     for path in env::split_paths(path) {
         if let Err(e) = try_exec(&filepath(path, filename), args, &exported) {
-            if first_error == ENOENT {
+            if first_error == nix::Error::ENOENT {
                 first_error = e;
             }
         }
