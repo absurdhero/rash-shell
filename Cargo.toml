@@ -1,7 +1,7 @@
 [package]
 name = "rash-shell"
 version = "0.2.1"
-edition = "2018"
+edition = "2021"
 authors = ["Brandon Bremen <bbremen@gmail.com>"]
 categories = ["command-line-utilities"]
 description = "A bourne-compatible shell inspired by dash"
