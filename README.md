@@ -105,6 +105,8 @@ Quality Improvements:
 
 [oursh (written in rust)](https://github.com/nixpulvis/oursh)
 
+[Morbig: A Static Parser for POSIX Shell](https://niols.fr/materials/papers/sle18.pdf)
+
 # Relevant Rust Language Information
 
 [Discussion about looping over recursive structures](https://stackoverflow.com/questions/37986640/cannot-obtain-a-mutable-reference-when-iterating-a-recursive-structure-cannot-b)

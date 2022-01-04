@@ -268,4 +268,22 @@ mod tests {
         assert_eq!(args[0], Arg::Arg("\"foo\""));
         assert_eq!(args[1], Arg::Arg("bar"));
     }
+
+    #[test]
+    fn recognize_pipe_as_delimiter() {
+        for input in &["foo | bar\n", "foo|bar\n"] {
+            let program = parse(input);
+            let pipeline = &program.commands.complete_commands[0].and_ors[0].1.pipelines[0].1;
+            assert_eq!(pipeline.commands.len(), 2);
+            let commands = &pipeline.commands;
+            if let Command::Simple(SimpleCommand {
+                assign: _assign,
+                cmd: Arg::Arg(cmd),
+                args: _args,
+            }) = &commands[0]
+            {
+                assert_eq!(cmd, &"foo");
+            }
+        }
+    }
 }
