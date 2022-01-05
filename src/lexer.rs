@@ -57,6 +57,7 @@ pub struct Lexer<'input> {
     input: &'input str,
     cur_type: TokType,
     cur_start: usize,
+    past_first_word: bool,
     next: Option<(usize, char)>,
 }
 
@@ -70,6 +71,7 @@ impl<'input> Lexer<'input> {
             input,
             cur_type: TokType::EOF,
             cur_start: 0,
+            past_first_word: false,
             next,
         }
     }
@@ -100,7 +102,21 @@ impl<'input> Lexer<'input> {
         if self.cur_type == TokType::EOF {
             return None;
         }
+
         let start = self.cur_start;
+
+        if self.cur_type == TokType::Word && !self.past_first_word {
+            // check if this word qualifies as an assignment word
+            let word = &self.input[start..end];
+            let name_idx = word.find('=');
+            if name_idx == None || name_idx == Some(0) || !is_name(&word[0..name_idx.unwrap()]) {
+                // once we stop finding assignment words, we're done for good.
+                self.past_first_word = true;
+            } else {
+                self.cur_type = TokType::AssignmentWord;
+            }
+        }
+
         let t = (start, Tok::new(self.cur_type, &self.input[start..end]), end);
 
         // reset token state
@@ -207,5 +223,15 @@ impl<'input> Iterator for Lexer<'input> {
                 }
             }
         }
+    }
+}
+
+// 3.230 Name: An alphanumeric word that does not begin with a digit
+fn is_name(s: &str) -> bool {
+    let first = s.chars().next();
+    if first == None || first.unwrap().is_ascii_digit() {
+        false
+    } else {
+        s.chars().all(|c| c.is_alphanumeric() || c == '_')
     }
 }

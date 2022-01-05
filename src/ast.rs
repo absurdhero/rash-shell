@@ -269,6 +269,61 @@ mod tests {
     }
 
     #[test]
+    fn assignment_before_command() {
+        // parse a variable assignment before a command
+        let program = parse("FOO=BAR echo");
+        assert_eq!(
+            first_command(&program),
+            &SimpleCommand {
+                assign: vec!["FOO=BAR"],
+                cmd: Arg::Arg("echo"),
+                args: vec![],
+            }
+        );
+        // value can be empty
+        let program = parse("FOO= echo");
+        assert_eq!(
+            first_command(&program),
+            &SimpleCommand {
+                assign: vec!["FOO="],
+                cmd: Arg::Arg("echo"),
+                args: vec![],
+            }
+        );
+        // variable name can't start with a number
+        let program = parse("999FOO=BAR echo");
+        assert_eq!(
+            first_command(&program),
+            &SimpleCommand {
+                assign: vec![],
+                cmd: Arg::Arg("999FOO=BAR"),
+                args: vec![Arg::Arg("echo")],
+            }
+        );
+        // but it can contain one
+        let program = parse("F9=BAR echo");
+        assert_eq!(
+            first_command(&program),
+            &SimpleCommand {
+                assign: vec!["F9=BAR"],
+                cmd: Arg::Arg("echo"),
+                args: vec![],
+            }
+        );
+
+        // multiple assignments
+        let program = parse("a=1 b=2 c=3 echo");
+        assert_eq!(
+            first_command(&program),
+            &SimpleCommand {
+                assign: vec!["a=1", "b=2", "c=3"],
+                cmd: Arg::Arg("echo"),
+                args: vec![],
+            }
+        );
+    }
+
+    #[test]
     fn recognize_pipe_as_delimiter() {
         for input in &["foo | bar\n", "foo|bar\n"] {
             let program = parse(input);

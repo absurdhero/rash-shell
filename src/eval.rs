@@ -66,6 +66,29 @@ impl Eval {
         let mut final_return: Option<i32> = None;
 
         for i in 0..pipeline.commands.len() {
+            // Create pipes between pipeline elements,
+            // set up stdin on the first element and stdout on the last element
+            let cur_stdin: RawFd;
+            if i == 0 {
+                cur_stdin = 0;
+                next_stdin = 0;
+                if pipeline.commands.len() == 1 {
+                    cur_stdout = 1;
+                } else if let Ok((r, w)) = pipe() {
+                    cur_stdout = w;
+                    next_stdin = r;
+                }
+            } else if i == pipeline.commands.len() - 1 {
+                cur_stdin = next_stdin;
+                cur_stdout = 1;
+            } else {
+                cur_stdin = next_stdin;
+                if let Ok((r, w)) = pipe() {
+                    cur_stdout = w;
+                    next_stdin = r;
+                }
+            };
+
             let command = &pipeline.commands[i];
             debug!("{:?}", command);
             match command {
@@ -73,39 +96,25 @@ impl Eval {
                     let parsed_cmd = match cmd {
                         ast::Arg::Arg(s) => self.expand_arg(*s),
                     };
+
+                    // assignments with no command change the current environment
+                    if parsed_cmd.is_empty() {
+                        for vareq in assign {
+                            self.context.env.set_vareq(vareq);
+                        }
+                        return;
+                    }
+
                     let mut parsed_args: Vec<String> = vec![parsed_cmd.clone()];
                     parsed_args.extend(args.iter().map(|a| match a {
                         ast::Arg::Arg(s) => self.expand_arg(*s),
                     }));
-                    let parsed_env: Vec<String> = assign.iter().map(|a| a.to_string()).collect();
-
-                    let cur_stdin: RawFd;
-
-                    if i == 0 {
-                        cur_stdin = 0;
-                        next_stdin = 0;
-                        if pipeline.commands.len() == 1 {
-                            cur_stdout = 1;
-                        } else if let Ok((r, w)) = pipe() {
-                            cur_stdout = w;
-                            next_stdin = r;
-                        }
-                    } else if i == pipeline.commands.len() - 1 {
-                        cur_stdin = next_stdin;
-                        cur_stdout = 1;
-                    } else {
-                        cur_stdin = next_stdin;
-                        if let Ok((r, w)) = pipe() {
-                            cur_stdout = w;
-                            next_stdin = r;
-                        }
-                    };
 
                     if let Some(pid) = exec::run_command(
                         &mut self.context,
                         &parsed_cmd,
                         &parsed_args,
-                        &parsed_env,
+                        assign,
                         context::StdIo {
                             stdin: cur_stdin,
                             stdout: cur_stdout,

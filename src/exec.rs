@@ -24,7 +24,7 @@ pub fn run_command(
     context: &mut context::Context,
     cmd: &str,
     args: &[String],
-    env: &[String],
+    env: &[&str],
     stdio: context::StdIo,
 ) -> Option<Pid> {
     let maybe_builtin;
@@ -77,12 +77,14 @@ pub fn exec(
     context: &context::Context,
     filename: &str,
     args: &[String],
-    env: &[String],
+    env: &[&str],
 ) -> nix::Result<Infallible> {
-    // add any prefixed variables to the environment
+    // add any prefixed variables to the environment and export them
     let mut child_env = context.env.clone();
     for v in env.iter() {
-        child_env.set_vareq(v);
+        if let Some((key, value)) = child_env.parse(*v) {
+            child_env.set_var(key, value.into(), Some(true))
+        }
     }
 
     let path = child_env.get("PATH").unwrap_or("/bin:/usr/bin");
