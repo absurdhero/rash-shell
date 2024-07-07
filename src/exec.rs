@@ -82,7 +82,7 @@ pub fn exec(
     // add any prefixed variables to the environment and export them
     let mut child_env = context.env.clone();
     for v in env.iter() {
-        if let Some((key, value)) = child_env.parse(*v) {
+        if let Some((key, value)) = child_env.parse(v) {
             child_env.set_var(key, value.into(), Some(true))
         }
     }

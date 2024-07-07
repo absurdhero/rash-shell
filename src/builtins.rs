@@ -80,7 +80,7 @@ fn cd(args: &[String], context: &mut Context, stdio: StdIo) -> i32 {
             stdio.eprintln(format_args!(
                 "rash: cd: {}: {}",
                 path.display(),
-                Errno::from_i32(e.raw_os_error().unwrap()).desc()
+                Errno::from_raw(e.raw_os_error().unwrap()).desc()
             ));
             1
         }

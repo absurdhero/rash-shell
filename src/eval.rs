@@ -9,6 +9,7 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use std::iter::Peekable;
+use std::os::fd::{AsRawFd, OwnedFd};
 use std::os::unix::io::RawFd;
 use std::str::Chars;
 
@@ -60,6 +61,7 @@ impl Eval {
 
     fn exec_pipeline(&mut self, exec_async: bool, pipeline: &ast::Pipeline) {
         let mut child_list: Vec<Pid> = vec![];
+        let mut owned_pipe_fds: Vec<OwnedFd> = vec![];
         let mut next_stdin: RawFd = 0;
         let mut cur_stdout: RawFd = 0;
 
@@ -75,8 +77,10 @@ impl Eval {
                 if pipeline.commands.len() == 1 {
                     cur_stdout = 1;
                 } else if let Ok((r, w)) = pipe() {
-                    cur_stdout = w;
-                    next_stdin = r;
+                    cur_stdout = w.as_raw_fd();
+                    next_stdin = r.as_raw_fd();
+                    owned_pipe_fds.push(r);
+                    owned_pipe_fds.push(w);
                 }
             } else if i == pipeline.commands.len() - 1 {
                 cur_stdin = next_stdin;
@@ -84,8 +88,10 @@ impl Eval {
             } else {
                 cur_stdin = next_stdin;
                 if let Ok((r, w)) = pipe() {
-                    cur_stdout = w;
-                    next_stdin = r;
+                    cur_stdout = w.as_raw_fd();
+                    next_stdin = r.as_raw_fd();
+                    owned_pipe_fds.push(r);
+                    owned_pipe_fds.push(w);
                 }
             };
 
@@ -94,7 +100,7 @@ impl Eval {
             match command {
                 ast::Command::Simple(ast::SimpleCommand { assign, cmd, args }) => {
                     let parsed_cmd = match cmd {
-                        ast::Arg::Arg(s) => self.expand_arg(*s),
+                        ast::Arg::Arg(s) => self.expand_arg(s),
                     };
 
                     // assignments with no command change the current environment
@@ -107,7 +113,7 @@ impl Eval {
 
                     let mut parsed_args: Vec<String> = vec![parsed_cmd.clone()];
                     parsed_args.extend(args.iter().map(|a| match a {
-                        ast::Arg::Arg(s) => self.expand_arg(*s),
+                        ast::Arg::Arg(s) => self.expand_arg(s),
                     }));
 
                     if let Some(pid) = exec::run_command(

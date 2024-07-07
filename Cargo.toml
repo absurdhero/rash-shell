@@ -1,6 +1,6 @@
 [package]
 name = "rash-shell"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 authors = ["Brandon Bremen <bbremen@gmail.com>"]
 categories = ["command-line-utilities"]
@@ -11,15 +11,15 @@ readme = "README.md"
 repository = "https://github.com/absurdhero/rash-shell"
 
 [build-dependencies]
-lalrpop = "0.19.6"
+lalrpop = "0.20.2"
 
 [dependencies]
-log = "0.4.14"
-pretty_env_logger = "0.4.0"
-lalrpop-util = "0.19.6"
-regex = "1.5.4"
-nix = "0.23.1"
-rustyline = "9.1.2"
+log = "0.4.22"
+pretty_env_logger = "0.5.0"
+lalrpop-util = "0.20.2"
+regex = "1.10.5"
+nix = { version = "0.29.0" , features=["fs", "process"]}
+rustyline = "14.0.0"
 
 [[bin]]
 name = "rash"

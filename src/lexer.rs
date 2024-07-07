@@ -109,7 +109,7 @@ impl<'input> Lexer<'input> {
             // check if this word qualifies as an assignment word
             let word = &self.input[start..end];
             let name_idx = word.find('=');
-            if name_idx == None || name_idx == Some(0) || !is_name(&word[0..name_idx.unwrap()]) {
+            if name_idx.is_none() || name_idx == Some(0) || !is_name(&word[0..name_idx.unwrap()]) {
                 // once we stop finding assignment words, we're done for good.
                 self.past_first_word = true;
             } else {
@@ -229,7 +229,7 @@ impl<'input> Iterator for Lexer<'input> {
 // 3.230 Name: An alphanumeric word that does not begin with a digit
 fn is_name(s: &str) -> bool {
     let first = s.chars().next();
-    if first == None || first.unwrap().is_ascii_digit() {
+    if first.is_none() || first.unwrap().is_ascii_digit() {
         false
     } else {
         s.chars().all(|c| c.is_alphanumeric() || c == '_')

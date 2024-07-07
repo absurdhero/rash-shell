@@ -14,6 +14,7 @@ extern crate lalrpop_util;
 extern crate log;
 
 use rustyline::error::ReadlineError;
+use rustyline::history::DefaultHistory;
 
 pub mod ast;
 pub mod builtins;
@@ -42,7 +43,7 @@ fn main() {
     let mut input: String = String::with_capacity(1024);
 
     let mut prompt_level = 1;
-    let mut rl = rustyline::Editor::<()>::new();
+    let mut rl = rustyline::Editor::<(), DefaultHistory>::new().unwrap();
 
     loop {
         let prompt = if prompt_level == 1 { "$ " } else { "> " };
@@ -77,7 +78,7 @@ fn stdin_is_a_tty() -> bool {
 /// Returns false if the input is incomplete.
 fn run_command(
     parser: &grammar::programParser,
-    rl: &mut rustyline::Editor<()>,
+    rl: &mut rustyline::Editor<(), DefaultHistory>,
     eval: &mut eval::Eval,
     input: &str,
 ) -> bool {
@@ -85,7 +86,7 @@ fn run_command(
     match parser.parse(input, lexer) {
         Ok(program) => {
             if eval.context.interactive {
-                rl.add_history_entry(input);
+                let _ = rl.add_history_entry(input);
             }
             trace!("{:?}", program);
             eval.eval(&program);
@@ -100,7 +101,7 @@ fn run_command(
                 eval.context.last_return = 2;
                 true
             }
-            lalrpop_util::ParseError::UnrecognizedEOF {
+            lalrpop_util::ParseError::UnrecognizedEof {
                 location: _,
                 expected: _,
             }
